@@ -26,13 +26,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased selection:bg-primary/10`}
       >
-        <Script
-          src="https://checkout.razorpay.com/v1/checkout.js"
-          strategy="beforeInteractive"
-        />
-
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -40,8 +35,13 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <Script
+            src="https://checkout.razorpay.com/v1/checkout.js"
+            strategy="afterInteractive"
+          />
         </ThemeProvider>
       </body>
     </html>
   );
+
 }

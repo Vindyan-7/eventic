@@ -5,53 +5,73 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { useFormStatus } from "react-dom";
-
-function SubmitButton() {
-    const { pending } = useFormStatus();
-
-    return (
-        <Button type="submit" className="w-full" disabled={pending}>
-            {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Sign In
-        </Button>
-    );
-}
+import { useActionState } from "react";
 
 export function LoginForm() {
-    async function handleLogin(formData: FormData) {
-        alert("LOGIN CLICKED");
+    const [state, formAction, isPending] =
+        useActionState(
+            async (
+                prevState: any,
+                formData: FormData
+            ) => {
+                alert("FORM SUBMITTED");
 
-        const result = await signIn(formData);
+                const result =
+                    await signIn(
+                        formData
+                    );
 
-        alert("SERVER RETURNED");
-    }
+                alert(
+                    "SIGNIN RETURNED"
+                );
 
-
+                return result;
+            },
+            null
+        );
 
     return (
-        <form action={handleLogin} className="space-y-6">
-            <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+        <form
+            action={formAction}
+            className="space-y-6"
+        >
+            {state?.error && (
+                <div className="p-3 rounded-lg border">
+                    {state.error}
+                </div>
+            )}
+
+            <div>
+                <Label>Email</Label>
+
                 <Input
-                    id="email"
                     name="email"
                     type="email"
-                    placeholder="name@example.com"
                     required
                 />
             </div>
-            <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+
+            <div>
+                <Label>Password</Label>
+
                 <Input
-                    id="password"
                     name="password"
                     type="password"
-                    placeholder="••••••••"
                     required
                 />
             </div>
-            <SubmitButton />
+
+            <Button
+                type="submit"
+                className="w-full"
+                disabled={isPending}
+            >
+                {isPending && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+
+                Login
+            </Button>
         </form>
     );
 }

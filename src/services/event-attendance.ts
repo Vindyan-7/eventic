@@ -35,6 +35,8 @@ export async function checkInAttendee(
             .from("event_registrations")
             .select(`
                 id,
+                checked_in,
+                checked_in_at,
                 event_id,
                 events (
                     organization_id
@@ -43,30 +45,38 @@ export async function checkInAttendee(
             .eq("id", registrationId)
             .single();
 
-
     if (!registration) {
         return {
             error: "Registration not found",
         };
     }
 
-    const event =
-        registration.events as {
-            organization_id: string;
-        } | null;
+    const event = Array.isArray(
+    registration.events
+)
+    ? registration.events[0]
+    : registration.events;
 
-    if (!event) {
-        return {
-            error: "Event not found",
-        };
-    }
+if (!event) {
+    return {
+        error: "Event not found",
+    };
+}
 
-    if (
-        event.organization_id !==
-        organization.id
-    ) {
+if (
+    event.organization_id !==
+    organization.id
+) {
+    return {
+        error: "Access denied",
+    };
+}
+
+    // Prevent duplicate scans
+    if (registration.checked_in) {
         return {
-            error: "Access denied",
+            error:
+                "Attendee already checked in",
         };
     }
 
@@ -91,5 +101,7 @@ export async function checkInAttendee(
 
     return {
         success: true,
+        checkedInAt:
+            new Date().toISOString(),
     };
 }

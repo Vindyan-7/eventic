@@ -3,11 +3,18 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/constants/routes";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { fadeInUp, staggerContainer } from "@/lib/motion";
 import { ArrowRight, Sparkles, Zap, Shield, Globe, Users } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export default function HomePage() {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Navbar */}
@@ -44,8 +51,13 @@ export default function HomePage() {
           </div>
 
           <div className="container mx-auto px-4">
-            <div className="max-w-4xl mx-auto text-center space-y-8">
-              <div>
+            <motion.div
+              variants={staggerContainer}
+              initial={isMounted ? "initial" : "animate"}
+              animate="animate"
+              className="max-w-4xl mx-auto text-center space-y-8"
+            >
+              <motion.div variants={fadeInUp}>
                 <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium border border-primary/20 mb-6">
                   <Sparkles className="h-4 w-4" /> Next-gen Event Management
                 </span>
@@ -55,10 +67,9 @@ export default function HomePage() {
                 <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
                   The all-in-one platform for creators and organizations to build, grow, and manage unforgettable events at scale.
                 </p>
-              </div>
+              </motion.div>
 
-
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Button size="lg" className="h-14 px-8 rounded-full text-lg gap-2" asChild>
                   <Link href={ROUTES.AUTH.REGISTER}>
                     Create Event <ArrowRight className="h-5 w-5" />
@@ -67,10 +78,9 @@ export default function HomePage() {
                 <Button size="lg" variant="outline" className="h-14 px-8 rounded-full text-lg" asChild>
                   <Link href={ROUTES.PUBLIC.EVENTS}>Discover Events</Link>
                 </Button>
-              </div>
+              </motion.div>
 
-
-              <div className="pt-12 grid grid-cols-2 md:grid-cols-4 gap-8">
+              <motion.div variants={fadeInUp} className="pt-12 grid grid-cols-2 md:grid-cols-4 gap-8">
                 {[
                   { icon: Zap, label: "Fast & Scalable" },
                   { icon: Shield, label: "Secure Payments" },
@@ -84,10 +94,8 @@ export default function HomePage() {
                     <span className="text-sm font-medium text-muted-foreground">{item.label}</span>
                   </div>
                 ))}
-              </div>
-
-            </div>
-
+              </motion.div>
+            </motion.div>
           </div>
         </section>
       </main>
@@ -114,3 +122,4 @@ export default function HomePage() {
     </div>
   );
 }
+

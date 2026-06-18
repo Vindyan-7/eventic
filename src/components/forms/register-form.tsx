@@ -5,26 +5,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { useFormStatus } from "react-dom";
-
-function SubmitButton() {
-    const { pending } = useFormStatus();
-
-    return (
-        <Button type="submit" className="w-full" disabled={pending}>
-            {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Account
-        </Button>
-    );
-}
+import { useActionState } from "react";
 
 export function RegisterForm() {
-    async function handleRegister(formData: FormData) {
-        await signUp(formData);
-    }
+    const [state, formAction, isPending] = useActionState(
+        async (prevState: any, formData: FormData) => {
+            return await signUp(formData);
+        },
+        null
+    );
 
     return (
-        <form action={handleRegister} className="space-y-6">
+        <form action={formAction} className="space-y-6">
+            {state?.error && (
+                <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20 animate-in fade-in slide-in-from-top-1">
+                    {state.error}
+                </div>
+            )}
             <div className="space-y-2">
                 <Label htmlFor="full_name">Full Name</Label>
                 <Input
@@ -33,6 +30,7 @@ export function RegisterForm() {
                     type="text"
                     placeholder="John Doe"
                     required
+                    disabled={isPending}
                 />
             </div>
             <div className="space-y-2">
@@ -43,6 +41,7 @@ export function RegisterForm() {
                     type="email"
                     placeholder="name@example.com"
                     required
+                    disabled={isPending}
                 />
             </div>
             <div className="space-y-2">
@@ -53,9 +52,14 @@ export function RegisterForm() {
                     type="password"
                     placeholder="••••••••"
                     required
+                    disabled={isPending}
                 />
             </div>
-            <SubmitButton />
+            <Button type="submit" className="w-full" disabled={isPending}>
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Create Account
+            </Button>
         </form>
     );
 }
+
