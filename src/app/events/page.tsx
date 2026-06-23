@@ -1,68 +1,41 @@
-import Link from "next/link";
 import { getPublishedEvents } from "@/services/public-events";
-import Image from "next/image";
+import { EventsFilter } from "@/components/event/events-filters";
+
 export default async function EventsPage() {
     const events = await getPublishedEvents();
 
+    const sortedEvents = [...events].sort((a: any, b: any) => {
+        // We keep the initial sort if needed, but since it's a client component, 
+        // the client will handle its own sorting if we want, 
+        // but let's pass a reasonably sorted list as initial.
+        return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+    });
+
     return (
-        <div className="container mx-auto py-10">
-            <div className="mb-10">
-                <h1 className="text-4xl font-bold">
-                    Discover Events
-                </h1>
+        <div className="container mx-auto px-4 py-8 lg:py-10">
+            {/* Hero Section */}
+            <div className="relative overflow-hidden rounded-3xl border bg-gradient-to-br from-background via-background to-muted/40 p-6 lg:p-10 mb-10">
+                <div className="max-w-3xl">
+                    <h1 className="text-4xl lg:text-6xl font-bold tracking-tight">
+                        Discover Amazing Events
+                    </h1>
 
-                <p className="text-muted-foreground mt-2">
-                    Explore upcoming events happening now.
-                </p>
-            </div>
+                    <p className="text-muted-foreground mt-4 text-base lg:text-lg">
+                        Explore workshops, hackathons, conferences, meetups and community events happening around you.
+                    </p>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {events.map((event) => (
-                    <Link
-                        key={event.id}
-                        href={`/events/${event.slug}`}
-                        className="group rounded-2xl border p-4 hover:shadow-lg transition bg-white"
-                    >
-                        <div className="space-y-4">
-                            <div className="relative h-48 overflow-hidden rounded-xl">
-                                <Image
-                                    src={
-                                        event.banner_url ||
-                                        "https://images.unsplash.com/photo-1540575861501-7ad0582371f3?q=80&w=1200&auto=format&fit=crop"
-                                    }
-                                    alt={event.title}
-                                    fill
-                                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                                />
-                            </div>
-
-                            <div>
-                                <h2 className="text-2xl font-semibold">
-                                    {event.title}
-                                </h2>
-
-                                <p className="text-sm text-muted-foreground">
-                                    {event.organizations?.name}
-                                </p>
-                            </div>
-
-                            <p className="line-clamp-3 text-sm">
-                                {event.description}
-                            </p>
-
-                            <div className="flex items-center justify-between text-sm">
-                                <span>{event.venue}</span>
-
-                                <span>
-                                    {event.is_paid
-                                        ? `₹${event.ticket_price}`
-                                        : "Free"}
-                                </span>
-                            </div>
+                    <div className="mt-6 flex flex-wrap gap-3">
+                        <div className="rounded-full border px-4 py-2 text-sm bg-background/50 backdrop-blur-sm">
+                            {events.length} Events Available
                         </div>
-                    </Link>
-                ))}
+                    </div>
+                </div>
             </div>
+
+            <EventsFilter events={sortedEvents} />
+
+            {/* Results Header */}
+            {/* Note: The header and grid are now inside EventsFilter to support live filtering */}
         </div>
     );
 }

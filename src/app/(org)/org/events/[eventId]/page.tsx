@@ -37,9 +37,8 @@ interface PageProps {
 }
 
 export default async function OrgEventDetailPage({ params }: PageProps) {
-    await requireOrgAdmin();
-
     const { eventId } = await params;
+    await requireOrgAdmin(`/org/events/${eventId}`);
     const result = await getOrganizationEvent(eventId);
 
     if (result.error || !result.data) {
@@ -48,8 +47,35 @@ export default async function OrgEventDetailPage({ params }: PageProps) {
 
     const event = result.data;
 
+    const registrationPercentage =
+        event.max_attendees
+            ? Math.round(
+                (event.registration_count /
+                    event.max_attendees) *
+                100
+            )
+            : null;
+
+    const revenue =
+        event.is_paid
+            ? event.registration_count *
+            Number(event.ticket_price)
+            : 0;
+
+    const now = new Date();
+
+    const autoStatus =
+        event.status === "cancelled"
+            ? "cancelled"
+            : event.ends_at &&
+                new Date(event.ends_at) < now
+                ? "completed"
+                : new Date(event.starts_at) < now
+                    ? "live"
+                    : "upcoming";
+
     return (
-        <div className="max-w-4xl mx-auto space-y-8">
+        <div className="max-w-6xl mx-auto space-y-8">
             {/* ── Page header ── */}
             <div className="flex items-start justify-between gap-4">
                 <div>
@@ -69,7 +95,6 @@ export default async function OrgEventDetailPage({ params }: PageProps) {
                 </span>
             </div>
 
-            {/* ── Banner ── */}
             {event.banner_url && (
                 <div className="relative w-full h-64 rounded-2xl overflow-hidden border">
                     <Image
@@ -82,6 +107,60 @@ export default async function OrgEventDetailPage({ params }: PageProps) {
                     />
                 </div>
             )}
+
+            <div className="grid gap-4 md:grid-cols-4">
+
+                <Card>
+                    <CardContent className="p-6">
+                        <p className="text-sm text-muted-foreground">
+                            Registrations
+                        </p>
+
+                        <p className="text-3xl font-bold mt-2">
+                            {event.registration_count}
+                        </p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardContent className="p-6">
+                        <p className="text-sm text-muted-foreground">
+                            Revenue
+                        </p>
+
+                        <p className="text-3xl font-bold mt-2">
+                            ₹{revenue}
+                        </p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardContent className="p-6">
+                        <p className="text-sm text-muted-foreground">
+                            Capacity Used
+                        </p>
+
+                        <p className="text-3xl font-bold mt-2">
+                            {registrationPercentage ??
+                                "∞"}
+                            %
+                        </p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardContent className="p-6">
+                        <p className="text-sm text-muted-foreground">
+                            Status
+                        </p>
+
+                        <p className="text-3xl font-bold mt-2 capitalize">
+                            {autoStatus}
+                        </p>
+                    </CardContent>
+                </Card>
+
+            </div>
 
             {/* ── Details card ── */}
             <Card>
@@ -147,7 +226,6 @@ export default async function OrgEventDetailPage({ params }: PageProps) {
                             </div>
                         )}
 
-                        {/* Registration count */}
                         <div>
                             <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
                                 Registrations
@@ -161,6 +239,42 @@ export default async function OrgEventDetailPage({ params }: PageProps) {
                                 )}
                             </dd>
                         </div>
+
+                        <div>
+                            <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                                Revenue Generated
+                            </dt>
+
+                            <dd className="text-sm font-semibold">
+                                ₹{revenue}
+                            </dd>
+                        </div>
+
+                        {event.max_attendees && (
+                            <div className="sm:col-span-2">
+
+                                <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                                    Capacity Usage
+                                </dt>
+
+                                <div className="h-3 rounded-full bg-muted overflow-hidden">
+                                    <div
+                                        className="h-full bg-primary"
+                                        style={{
+                                            width: `${registrationPercentage}%`,
+                                        }}
+                                    />
+                                </div>
+
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                    {event.registration_count}
+                                    {" / "}
+                                    {event.max_attendees}
+                                    {" seats filled"}
+                                </p>
+
+                            </div>
+                        )}
                     </dl>
                 </CardContent>
 
@@ -172,7 +286,7 @@ export default async function OrgEventDetailPage({ params }: PageProps) {
                     >
                         View Attendees
                     </Link>
-                    
+
                     <Link
                         href={`/org/events/${event.id}/scan`}
                         className="rounded-xl bg-black px-4 py-2 text-white"
@@ -201,6 +315,58 @@ export default async function OrgEventDetailPage({ params }: PageProps) {
                     <DeleteEventButton eventId={event.id} />
 
                 </CardFooter>
+            </Card>
+
+            <Card>
+
+                <CardHeader>
+                    <CardTitle>
+                        Event Timeline
+                    </CardTitle>
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+
+                    <div>
+                        <p className="font-medium">
+                            Created
+                        </p>
+
+                        <p className="text-sm text-muted-foreground">
+                            {formatDate(
+                                event.created_at
+                            )}
+                        </p>
+                    </div>
+
+                    <div>
+                        <p className="font-medium">
+                            Starts
+                        </p>
+
+                        <p className="text-sm text-muted-foreground">
+                            {formatDate(
+                                event.starts_at
+                            )}
+                        </p>
+                    </div>
+
+                    {event.ends_at && (
+                        <div>
+                            <p className="font-medium">
+                                Ends
+                            </p>
+
+                            <p className="text-sm text-muted-foreground">
+                                {formatDate(
+                                    event.ends_at
+                                )}
+                            </p>
+                        </div>
+                    )}
+
+                </CardContent>
+
             </Card>
         </div>
     );

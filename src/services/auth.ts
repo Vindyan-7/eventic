@@ -9,10 +9,9 @@ export async function signUp(formData: FormData) {
   const full_name = formData.get("full_name") as string;
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
+  const redirectTo = formData.get("redirectTo") as string;
 
-  console.log("SIGNUP EMAIL", email);
-
-  const { data, error } = await supabase.auth.signUp({
+  const { error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -22,18 +21,30 @@ export async function signUp(formData: FormData) {
     },
   });
 
-  console.log("SIGNUP DATA", data);
-  console.log("SIGNUP ERROR", error);
-
   if (error) {
+    console.error(error);
+    const msg = error.message.toLowerCase();
+    if (
+      msg.includes("already registered") ||
+      msg.includes("already exists") ||
+      msg.includes("email_taken") ||
+      msg.includes("email already") ||
+      error.status === 422
+    ) {
+      return {
+        alreadyExists: true,
+      };
+    }
     return {
       error: error.message,
     };
   }
 
-  console.log("SIGNUP SUCCESS");
+  const target = redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//")
+    ? redirectTo
+    : "/dashboard";
 
-  redirect("/dashboard");
+  redirect(target);
 }
 
 export async function signIn(formData: FormData) {
@@ -41,45 +52,30 @@ export async function signIn(formData: FormData) {
 
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
+  const redirectTo = formData.get("redirectTo") as string;
 
-  console.log("================================");
-  console.log("LOGIN ATTEMPT");
-  console.log("EMAIL:", email);
-
-  const { data, error } =
+  const { error } =
     await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-  console.log("LOGIN DATA:", data);
-  console.log("LOGIN ERROR:", error);
-
   if (error) {
-    console.log("LOGIN FAILED");
-
+    console.error(error);
     return {
       error: error.message,
     };
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const target = redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//")
+    ? redirectTo
+    : "/dashboard";
 
-  console.log("USER AFTER LOGIN:", user);
-
-  console.log("LOGIN SUCCESS");
-  console.log("REDIRECTING TO DASHBOARD");
-  console.log("================================");
-
-  redirect("/dashboard");
+  redirect(target);
 }
 
 export async function signOut() {
   const supabase = await createClient();
-
-  console.log("SIGNING OUT");
 
   await supabase.auth.signOut();
 

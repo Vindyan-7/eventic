@@ -43,12 +43,23 @@ export async function createEvent(formData: FormData) {
     const venue = formData.get("venue") as string;
     const starts_at = formData.get("starts_at") as string;
     const ends_at = formData.get("ends_at") as string;
+    const max_attendees =
+        formData.get("max_attendees")
+            ? Number(
+                formData.get(
+                    "max_attendees"
+                )
+            )
+            : null;
 
     const is_paid = formData.get("is_paid") === "on";
 
     const ticket_price = Number(
         formData.get("ticket_price") || 0
     );
+
+    const category = formData.get("category") as string;
+    const status = (formData.get("status") as string) || "draft";
 
     const slug = generateSlug(title);
 
@@ -68,10 +79,12 @@ export async function createEvent(formData: FormData) {
             venue,
             starts_at,
             ends_at,
+            max_attendees,
             is_paid,
             ticket_price,
             banner_url: bannerUrl,
-            status: "published",
+            category,
+            status,
         });
 
     if (error) {
@@ -121,8 +134,19 @@ export async function updateEvent(eventId: string, formData: FormData) {
     const venue = formData.get("venue") as string;
     const starts_at = formData.get("starts_at") as string;
     const ends_at = formData.get("ends_at") as string;
+    const max_attendees =
+        formData.get("max_attendees")
+            ? Number(
+                formData.get(
+                    "max_attendees"
+                )
+            )
+            : null;
+
     const is_paid = formData.get("is_paid") === "on";
     const ticket_price = Number(formData.get("ticket_price") || 0);
+    const category = formData.get("category") as string;
+    const status = formData.get("status") as string;
 
     let bannerUrl = existingEvent.banner_url;
     if (bannerFile && bannerFile.size > 0) {
@@ -143,9 +167,12 @@ export async function updateEvent(eventId: string, formData: FormData) {
             venue,
             starts_at,
             ends_at,
+            max_attendees,
             is_paid,
             ticket_price,
             banner_url: bannerUrl,
+            category,
+            status,
             updated_at: new Date().toISOString(),
         })
         .eq("id", eventId);

@@ -112,11 +112,13 @@ export async function verifyPayment(
         existingRegistrationError
     );
 
+    let registration: any = null;
+
     if (
         !existingRegistration
     ) {
         const {
-            data: registration,
+            data: insertedRegistration,
             error:
             registrationInsertError,
         } = await supabase
@@ -134,7 +136,7 @@ export async function verifyPayment(
 
         console.log(
             "NEW REGISTRATION",
-            registration
+            insertedRegistration
         );
 
         console.log(
@@ -150,6 +152,8 @@ export async function verifyPayment(
                     registrationInsertError.message,
             };
         }
+
+        registration = insertedRegistration;
 
         const {
             error: linkError,
@@ -178,10 +182,11 @@ export async function verifyPayment(
                     linkError.message,
             };
         }
-
     }
 
+    const regId = existingRegistration?.id || registration?.id;
     return {
         success: true,
+        registrationId: regId,
     };
 }

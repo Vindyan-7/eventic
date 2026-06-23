@@ -17,6 +17,7 @@ export interface EventAttendee {
     registration_id: string;
     checked_in: boolean;
     checked_in_at: string | null;
+    payment_status: string;
 }
 
 type GetEventAttendeesResult =
@@ -84,17 +85,20 @@ export async function getEventAttendees(
     } = await supabase
         .from("event_registrations")
         .select(`
-            id,
-            created_at,
-            checked_in,
-            checked_in_at,
-            profiles!event_registrations_user_id_fkey (
-                id,
-                full_name,
-                email,
-                avatar_url
-            )
-        `)
+    id,
+    created_at,
+    checked_in,
+    checked_in_at,
+    profiles!event_registrations_user_id_fkey (
+        id,
+        full_name,
+        email,
+        avatar_url
+    ),
+    payments (
+        status
+    )
+`)
         .eq("event_id", eventId)
         .order("created_at", {
             ascending: true,
@@ -122,24 +126,29 @@ export async function getEventAttendees(
                         avatar_url: string | null;
                     };
 
-                return {
-                    id: profile.id,
-                    full_name:
-                        profile.full_name,
-                    email: profile.email,
-                    avatar_url:
-                        profile.avatar_url,
-                    registered_at:
-                        reg.created_at,
-                    registration_id:
-                        reg.id,
-                    checked_in:
-                        Boolean(
-                            reg.checked_in
-                        ),
-                    checked_in_at:
-                        reg.checked_in_at,
-                };
+                const payment =
+    Array.isArray(reg.payments)
+        ? reg.payments[0]
+        : null;
+
+return {
+    id: profile.id,
+    full_name:
+        profile.full_name,
+    email: profile.email,
+    avatar_url:
+        profile.avatar_url,
+    registered_at:
+        reg.created_at,
+    registration_id:
+        reg.id,
+    checked_in:
+        Boolean(reg.checked_in),
+    checked_in_at:
+        reg.checked_in_at,
+    payment_status:
+        payment?.status ?? "free",
+};
             });
 
     return {

@@ -2,7 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { CreateEventForm } from "@/components/forms/create-event-form";
 
 export default async function CreateEventPage() {
-    await requireUser();
+    await requireUser("/org/events/create");
     return (
         <div className="max-w-3xl mx-auto space-y-8">
             <div>

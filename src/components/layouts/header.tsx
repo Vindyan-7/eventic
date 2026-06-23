@@ -1,9 +1,9 @@
 "use client";
 import { ModeSwitcher } from "@/components/shared/mode-switcher";
-import { getCurrentProfile } from "@/services/profile";
 import { Bell, Search, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { signOut } from "@/services/auth";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -60,28 +60,110 @@ export function Header({ role, profile }: HeaderProps) {
                 </Button>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                        <Button
+                            variant="ghost"
+                            className="relative h-8 w-8 rounded-full"
+                        >
                             <Avatar className="h-8 w-8">
-                                <AvatarImage src="/avatars/01.png" alt="@user" />
-                                <AvatarFallback>JD</AvatarFallback>
+                                <AvatarImage
+                                    src={
+                                        profile?.avatar_url ??
+                                        ""
+                                    }
+                                    alt={
+                                        profile?.full_name ??
+                                        "User"
+                                    }
+                                />
+
+                                <AvatarFallback>
+                                    {profile?.full_name
+                                        ?.split(" ")
+                                        .map(
+                                            (
+                                                part: string
+                                            ) =>
+                                                part[0]
+                                        )
+                                        .join("")
+                                        .slice(0, 2)
+                                        .toUpperCase() ??
+                                        "U"}
+                                </AvatarFallback>
                             </Avatar>
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56" align="end" forceMount>
+
+                    <DropdownMenuContent
+                        className="w-56"
+                        align="end"
+                        forceMount
+                    >
                         <DropdownMenuLabel className="font-normal">
                             <div className="flex flex-col space-y-1">
-                                <p className="text-sm font-medium leading-none">John Doe</p>
+                                <p className="text-sm font-medium leading-none">
+                                    {profile?.full_name ??
+                                        "User"}
+                                </p>
+
                                 <p className="text-xs leading-none text-muted-foreground">
-                                    john@example.com
+                                    {profile?.email ??
+                                        ""}
                                 </p>
                             </div>
                         </DropdownMenuLabel>
+
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>Profile</DropdownMenuItem>
-                        <DropdownMenuItem>Billing</DropdownMenuItem>
-                        <DropdownMenuItem>Settings</DropdownMenuItem>
+
+                        <DropdownMenuItem asChild>
+                            <a href="/dashboard/profile">
+                                My Profile
+                            </a>
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem asChild>
+                            <a href="/dashboard/events">
+                                My Events
+                            </a>
+                        </DropdownMenuItem>
+
+                        {isOrganizer && (
+                            <>
+                                <DropdownMenuSeparator />
+
+                                <DropdownMenuItem asChild>
+                                    <a href="/org/settings">
+                                        Organization Settings
+                                    </a>
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem asChild>
+                                    <a href="/org/analytics">
+                                        Analytics
+                                    </a>
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem asChild>
+                                    <a href="/org/payouts">
+                                        Payouts
+                                    </a>
+                                </DropdownMenuItem>
+                            </>
+
+                        )}
+
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>Log out</DropdownMenuItem>
+
+                        <div className="px-2 py-1">
+                            <form action={signOut}>
+                                <button
+                                    type="submit"
+                                    className="w-full rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
+                                >
+                                    Logout
+                                </button>
+                            </form>
+                        </div>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>

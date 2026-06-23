@@ -1,6 +1,9 @@
 "use client";
 
-import { useTransition } from "react";
+import { useTransition, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { toast } from "sonner";
 import { registerForEvent } from "@/services/registrations";
 import { createPaymentOrder } from "@/services/payments";
 import { verifyPayment } from "@/services/payment-verification";
@@ -16,6 +19,12 @@ interface Props {
   isPaid: boolean;
   ticketPrice: number;
   isRegistered: boolean;
+  registrationId: string | null;
+  isFull: boolean;
+  isEventClosed?: boolean;
+  eventStatus?: "Draft" | "Upcoming" | "Live" | "Completed" | "Cancelled";
+  slug: string;
+  isAuthenticated: boolean;
 }
 
 export function RegisterButton({
@@ -23,139 +32,148 @@ export function RegisterButton({
   isPaid,
   ticketPrice,
   isRegistered,
+  registrationId,
+  isFull,
+  isEventClosed,
+  eventStatus,
+  slug,
+  isAuthenticated,
 }: Props) {
-  if (isRegistered) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [isOrdering, setIsOrdering] = useState(false);
+
+  const isProcessing = pending || isOrdering;
+
+  if (isEventClosed) {
     return (
       <button
         disabled
-        className="rounded-xl bg-green-600 text-white px-6 py-3 cursor-not-allowed"
+        className="w-full rounded-xl bg-muted text-muted-foreground px-6 py-3 cursor-not-allowed font-medium"
       >
-        ✓ Already Registered
+        {eventStatus === "Cancelled" ? "Event Cancelled" : "Event Completed"}
       </button>
     );
   }
 
-  const [pending, startTransition] =
-    useTransition();
+  if (isFull) {
+    return (
+      <button
+        disabled
+        className="w-full rounded-xl bg-red-100 text-red-600 px-6 py-3 cursor-not-allowed font-medium"
+      >
+        Event Full
+      </button>
+    );
+  }
 
+  if (isRegistered) {
+    return (
+      <div className="space-y-3">
+        <button
+          disabled
+          className="w-full rounded-xl bg-green-100 text-green-700 px-6 py-3 cursor-not-allowed font-medium"
+        >
+          ✓ Already Registered
+        </button>
+        {registrationId && (
+          <Link
+            href={`/dashboard/events/${registrationId}`}
+            className="w-full block text-center rounded-xl bg-black text-white px-6 py-3 font-semibold hover:bg-black/90 transition-colors"
+          >
+            View Ticket
+          </Link>
+        )}
+      </div>
+    );
+  }
 
   async function handleRegister() {
+    if (!isAuthenticated) {
+      router.push(`/login?redirect=${encodeURIComponent(`/events/${slug}`)}`);
+      return;
+    }
+
     if (!isPaid) {
-      startTransition(
-        async () => {
-          const result =
-            await registerForEvent(
-              eventId
-            );
+      startTransition(async () => {
+        const result = await registerForEvent(eventId);
 
-          if (
-            result?.error
-          ) {
-            alert(
-              result.error
-            );
-            return;
-          }
-
-          alert(
-            "Successfully registered!"
-          );
+        if (result?.error) {
+          toast.error(result.error);
+          return;
         }
-      );
+
+        toast.success("Successfully registered!");
+        if (result.registrationId) {
+          router.push(`/dashboard/events/${result.registrationId}`);
+        } else {
+          router.push("/dashboard/events");
+        }
+      });
 
       return;
     }
 
-    console.log(
-      "RAZORPAY KEY",
-      process.env
-        .NEXT_PUBLIC_RAZORPAY_KEY_ID
-    );
-    const order =
-      await createPaymentOrder(
-        eventId
-      );
+    try {
+      setIsOrdering(true);
+      const order = await createPaymentOrder(eventId);
 
-    console.log("ORDER RESPONSE", order);
-    alert(JSON.stringify(order));
+      if (!order || "error" in order) {
+        toast.error(order?.error ?? "Failed to create payment order");
+        setIsOrdering(false);
+        return;
+      }
 
-
-    if (
-      !order ||
-      "error" in order
-    ) {
-      alert(
-        order?.error ??
-        "Failed to create payment"
-      );
-      return;
-    }
-
-    const razorpay =
-      new window.Razorpay({
-        key: process.env
-          .NEXT_PUBLIC_RAZORPAY_KEY_ID!,
-
-        amount:
-          order.amount,
-
+      const razorpay = new window.Razorpay({
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
+        amount: order.amount,
         currency: "INR",
-
         name: "Eventic",
+        description: order.eventTitle,
+        order_id: order.orderId,
+        handler: async (response: any) => {
+          startTransition(async () => {
+            const result = await verifyPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
 
-        description:
-          order.eventTitle,
-
-        order_id:
-          order.orderId,
-
-        handler:
-          async (
-            response: any
-          ) => {
-            const result =
-              await verifyPayment(
-                {
-                  razorpay_order_id:
-                    response.razorpay_order_id,
-
-                  razorpay_payment_id:
-                    response.razorpay_payment_id,
-
-                  razorpay_signature:
-                    response.razorpay_signature,
-                }
-              );
-
-            if (
-              result?.error
-            ) {
-              alert(
-                result.error
-              );
+            if (result?.error) {
+              toast.error(result.error);
+              setIsOrdering(false);
               return;
             }
 
-            alert(
-              "Payment successful & registration completed!"
-            );
-
-            window.location.reload();
+            toast.success("Payment successful & registration completed!");
+            if (result.registrationId) {
+              router.push(`/dashboard/events/${result.registrationId}`);
+            } else {
+              router.push("/dashboard/events");
+            }
+          });
+        },
+        modal: {
+          ondismiss: () => {
+            setIsOrdering(false);
           },
+        },
       });
 
-    razorpay.open();
+      razorpay.open();
+    } catch (err: any) {
+      toast.error(err.message || "Something went wrong");
+      setIsOrdering(false);
+    }
   }
 
   return (
     <button
-      onClick={
-        handleRegister
-      }
-      disabled={pending}
-      className="rounded-xl bg-black text-white px-6 py-3"
+      onClick={handleRegister}
+      disabled={isProcessing}
+      className="w-full rounded-xl bg-black text-white px-6 py-3 font-semibold hover:bg-black/90 transition-colors disabled:opacity-50"
     >
-      {pending
+      {isProcessing
         ? "Processing..."
         : isPaid
           ? `Pay ₹${ticketPrice}`

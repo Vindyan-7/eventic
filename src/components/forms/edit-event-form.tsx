@@ -23,6 +23,9 @@ interface EditEventFormProps {
         is_paid: boolean;
         ticket_price: number;
         banner_url: string | null;
+        max_attendees: number | null;
+        category: string | null;
+        status?: string;
     };
 }
 
@@ -38,7 +41,7 @@ function SubmitButton() {
             {pending && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            Update Event
+            Save Changes
         </Button>
     );
 }
@@ -46,9 +49,6 @@ function SubmitButton() {
 export function EditEventForm({
     event,
 }: EditEventFormProps) {
-    const [file, setFile] =
-        useState<File | null>(null);
-
     const [preview, setPreview] =
         useState<string | null>(
             event.banner_url
@@ -71,7 +71,7 @@ export function EditEventForm({
             <BannerUpload
                 preview={preview}
                 setPreview={setPreview}
-                setFile={setFile}
+                setFile={() => { }}
             />
 
             <div className="space-y-2">
@@ -86,6 +86,85 @@ export function EditEventForm({
                     required
                 />
             </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="category">
+                    Category
+                </Label>
+
+                <select
+                    id="category"
+                    name="category"
+                    defaultValue={event.category ?? ""}
+                    className="w-full rounded-xl border p-3 bg-background"
+                    required
+                >
+                    <option value="">
+                        Select Category
+                    </option>
+
+                    <option value="Technology">
+                        Technology
+                    </option>
+
+                    <option value="Hackathon">
+                        Hackathon
+                    </option>
+
+                    <option value="Workshop">
+                        Workshop
+                    </option>
+
+                    <option value="Seminar">
+                        Seminar
+                    </option>
+
+                    <option value="Conference">
+                        Conference
+                    </option>
+
+                    <option value="Startup">
+                        Startup
+                    </option>
+
+                    <option value="Networking">
+                        Networking
+                    </option>
+
+                    <option value="Cultural">
+                        Cultural
+                    </option>
+
+                    <option value="Sports">
+                        Sports
+                    </option>
+
+                    <option value="Music">
+                        Music
+                    </option>
+
+                    <option value="Gaming">
+                        Gaming
+                    </option>
+
+                    <option value="College Fest">
+                        College Fest
+                    </option>
+
+                    <option value="Competition">
+                        Competition
+                    </option>
+
+                    <option value="Webinar">
+                        Webinar
+                    </option>
+
+                    <option value="Other">
+                        Other
+                    </option>
+                </select>
+            </div>
+
 
             <div className="space-y-2">
                 <Label htmlFor="description">
@@ -130,10 +209,10 @@ export function EditEventForm({
                         defaultValue={
                             event.starts_at
                                 ? new Date(
-                                      event.starts_at
-                                  )
-                                      .toISOString()
-                                      .slice(0, 16)
+                                    event.starts_at
+                                )
+                                    .toISOString()
+                                    .slice(0, 16)
                                 : ""
                         }
                         required
@@ -152,14 +231,63 @@ export function EditEventForm({
                         defaultValue={
                             event.ends_at
                                 ? new Date(
-                                      event.ends_at
-                                  )
-                                      .toISOString()
-                                      .slice(0, 16)
+                                    event.ends_at
+                                )
+                                    .toISOString()
+                                    .slice(0, 16)
                                 : ""
                         }
                     />
                 </div>
+            </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="max_attendees">
+                    Maximum Attendees
+                </Label>
+
+                <Input
+                    id="max_attendees"
+                    name="max_attendees"
+                    type="number"
+                    min="1"
+                    defaultValue={
+                        event.max_attendees ?? ""
+                    }
+                    placeholder="Leave empty for unlimited attendees"
+                />
+            </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="status">
+                    Event Status
+                </Label>
+
+                <select
+                    id="status"
+                    name="status"
+                    defaultValue={
+                        event.status ??
+                        "published"
+                    }
+                    className="w-full rounded-md border bg-background px-3 py-2"
+                >
+                    <option value="draft">
+                        Draft
+                    </option>
+
+                    <option value="published">
+                        Published
+                    </option>
+
+                    <option value="cancelled">
+                        Cancelled
+                    </option>
+
+                    <option value="completed">
+                        Completed
+                    </option>
+                </select>
             </div>
 
             <div className="flex items-center gap-2">

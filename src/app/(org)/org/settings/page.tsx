@@ -6,7 +6,7 @@ import { getCurrentOrganization } from "@/services/organizations";
 import { OrganizationSettingsForm } from "@/components/forms/organization-settings-form";
 
 export default async function OrganizationSettingsPage() {
-    await requireOrgAdmin();
+    await requireOrgAdmin("/org/settings");
 
     const result =
         await getCurrentOrganization();

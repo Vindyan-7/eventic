@@ -18,18 +18,35 @@ export async function createPaymentOrder(
         };
     }
 
-    const { data: event, error: eventError } =
-        await supabase
-            .from("events")
-            .select("*")
-            .eq("id", eventId)
-            .single();
+    const { data: event, error: eventError } = await supabase
+        .from("events")
+        .select("*")
+        .eq("id", eventId)
+        .single();
 
     if (eventError || !event) {
         return {
             error: "Event not found",
         };
     }
+
+    const { count: registrationCount } = await supabase
+        .from("event_registrations")
+        .select("*", {
+            count: "exact",
+            head: true,
+        })
+        .eq("event_id", event.id);
+
+    if (
+        event.max_attendees &&
+        (registrationCount ?? 0) >= event.max_attendees
+    ) {
+        return {
+            error: "Event is full",
+        };
+    }
+
 
     const { data: existingRegistration } =
         await supabase

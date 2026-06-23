@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
+import { toast } from "sonner";
+
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
 
@@ -50,8 +52,9 @@ export function OrganizationSettingsForm({
     async function handleSubmit(formData: FormData) {
         try {
             await updateOrganization(formData);
+            toast.success("Organization settings updated successfully");
         } catch (err: any) {
-            alert(err.message);
+            toast.error(err.message || "Failed to update settings");
         }
     }
 
@@ -59,14 +62,17 @@ export function OrganizationSettingsForm({
     return (
         <form
             action={handleSubmit}
-
             className="space-y-6"
         >
+            <div className="inline-flex rounded-full border px-3 py-1 text-sm bg-muted/50 font-medium">
+                Organization Admin
+            </div>
+
             <div className="space-y-3">
                 <Label>Organization Logo</Label>
 
-                {preview && (
-                    <div className="relative h-32 w-32 overflow-hidden rounded-2xl border">
+                <div className="relative h-32 w-32 overflow-hidden rounded-2xl border flex items-center justify-center bg-muted">
+                    {preview ? (
                         <Image
                             src={preview}
                             alt="Organization Logo"
@@ -74,8 +80,13 @@ export function OrganizationSettingsForm({
                             sizes="128px"
                             className="object-cover"
                         />
-                    </div>
-                )}
+                    ) : (
+                        <span className="text-muted-foreground text-sm">
+                            No Logo
+                        </span>
+                    )}
+                </div>
+
 
                 <Input
                     type="file"
@@ -105,7 +116,14 @@ export function OrganizationSettingsForm({
                     defaultValue={organization.name}
                     required
                 />
+
+                <p className="text-sm text-muted-foreground">
+                    eventic.com/org/{organization.name
+                        .toLowerCase()
+                        .replace(/\s+/g, "-")}
+                </p>
             </div>
+
 
             <div className="space-y-2">
                 <Label htmlFor="description">

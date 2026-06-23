@@ -12,7 +12,8 @@ import {
     LayoutDashboard,
     BarChart3,
     Wallet,
-    Settings
+    Settings,
+    Ticket
 } from "lucide-react";
 
 import { useAppModeStore } from "@/store/app-mode";
@@ -73,6 +74,11 @@ export function Sidebar({ profile, className }: SidebarProps) {
                     label: "My Events",
                     href: "/dashboard/events",
                     icon: Calendar,
+                },
+                {
+                    label: "My Tickets",
+                    href: "/dashboard/tickets",
+                    icon: Ticket,
                 },
                 {
                     label: "Profile",

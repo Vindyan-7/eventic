@@ -3,7 +3,9 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
-    request,
+    request: {
+      headers: request.headers,
+    },
   });
 
   const supabase = createServerClient(
@@ -15,10 +17,22 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value));
-          supabaseResponse = NextResponse.next({
-            request,
+          cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value);
           });
+
+          // Rebuild the Cookie header string to propagate refreshed cookies to Server Components
+          const cookieString = request.cookies.getAll()
+            .map((c) => `${c.name}=${c.value}`)
+            .join("; ");
+          request.headers.set("cookie", cookieString);
+
+          supabaseResponse = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          });
+
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           );

@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   description: "Create, manage, and discover events with Eventic.",
 };
 
+import { Toaster } from "@/components/ui/sonner";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -35,6 +37,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <Toaster position="top-center" />
           <Script
             src="https://checkout.razorpay.com/v1/checkout.js"
             strategy="afterInteractive"
@@ -43,5 +46,4 @@ export default function RootLayout({
       </body>
     </html>
   );
-
 }

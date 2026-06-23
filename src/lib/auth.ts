@@ -11,11 +11,14 @@ export async function getUser() {
   return user;
 }
 
-export async function requireUser() {
+export async function requireUser(redirectPath?: string) {
   const user = await getUser();
 
   if (!user) {
-    redirect("/login");
+    const target = redirectPath
+      ? `/login?redirect=${encodeURIComponent(redirectPath)}`
+      : "/login";
+    redirect(target);
   }
 
   return user;

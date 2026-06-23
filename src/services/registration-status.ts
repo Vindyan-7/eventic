@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function isRegistered(
     eventId: string
-) {
+): Promise<string | null> {
     const supabase = await createClient();
 
     const {
@@ -12,7 +12,7 @@ export async function isRegistered(
     } = await supabase.auth.getUser();
 
     if (!user) {
-        return false;
+        return null;
     }
 
     const { data } = await supabase
@@ -22,5 +22,5 @@ export async function isRegistered(
         .eq("user_id", user.id)
         .maybeSingle();
 
-    return !!data;
+    return data?.id || null;
 }

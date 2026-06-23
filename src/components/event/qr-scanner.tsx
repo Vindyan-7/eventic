@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Html5Qrcode } from "html5-qrcode";
+import { scanTicket } from "@/services/scan-ticket";
+import { ScanResultCard } from "./scan-result-card";
 
 interface Props {
-    onScan: (
-        registrationId: string
-    ) => void;
+    eventId: string;
 }
 
 export function QRScanner({
-    onScan,
+    eventId,
 }: Props) {
     const [error, setError] =
         useState<string>("");
@@ -19,6 +19,15 @@ export function QRScanner({
         useState<string>(
             "Initializing scanner..."
         );
+
+    const [attendee, setAttendee] =
+        useState<any>(null);
+
+    const [isProcessing, setIsProcessing] =
+        useState(false);
+
+    const [pending, startTransition] =
+        useTransition();
 
     useEffect(() => {
         let scanner: Html5Qrcode | null =
@@ -81,6 +90,10 @@ export function QRScanner({
                     (
                         decodedText
                     ) => {
+                        if (isProcessing) {
+                            return;
+                        }
+
                         console.log(
                             "QR DETECTED:",
                             decodedText
@@ -90,8 +103,42 @@ export function QRScanner({
                             "QR Code detected"
                         );
 
-                        onScan(
-                            decodedText
+                        setIsProcessing(true);
+
+                        startTransition(
+                            async () => {
+                                const result =
+                                    await scanTicket(
+                                        decodedText,
+                                        eventId
+                                    );
+
+                                if (
+                                    "error" in result
+                                ) {
+                                    setError(
+                                        result.error || "Verification failed"
+                                    );
+
+                                    setTimeout(() => {
+                                        setIsProcessing(false);
+                                    }, 2000);
+
+                                    return;
+                                }
+
+                                setAttendee(
+                                    result.attendee
+                                );
+
+                                setStatus(
+                                    "Ticket verified"
+                                );
+
+                                setTimeout(() => {
+                                    setIsProcessing(false);
+                                }, 2000);
+                            }
                         );
                     },
                     () => {
@@ -110,7 +157,7 @@ export function QRScanner({
 
                 setError(
                     err?.message ||
-                        "Failed to access camera."
+                    "Failed to access camera."
                 );
 
                 setStatus(
@@ -132,7 +179,7 @@ export function QRScanner({
                         await scanner.clear();
                     }
                 } catch (
-                    cleanupError
+                cleanupError
                 ) {
                     console.error(
                         cleanupError
@@ -142,7 +189,7 @@ export function QRScanner({
 
             cleanup();
         };
-    }, [onScan]);
+    }, [eventId]);
 
     return (
         <div className="space-y-4">
@@ -161,10 +208,30 @@ export function QRScanner({
                 </p>
             </div>
 
+            {(attendee || error) && (
+                <button
+                    onClick={() => {
+                        setAttendee(null);
+                        setError("");
+                        setStatus("Camera active. Scan a ticket.");
+                        setIsProcessing(false);
+                    }}
+                    className="w-full rounded-xl bg-black text-white px-6 py-3 font-semibold hover:bg-black/90 transition-colors"
+                >
+                    Scan Next Ticket
+                </button>
+            )}
+
+            {attendee && (
+                <ScanResultCard
+                    attendee={attendee}
+                />
+            )}
+
             {error && (
                 <div className="rounded-xl border border-red-500 bg-red-50 p-4 text-red-600">
                     <p className="font-medium">
-                        Camera Error
+                        Verification Error
                     </p>
 
                     <p className="text-sm">
@@ -174,4 +241,4 @@ export function QRScanner({
             )}
         </div>
     );
-}
+}   

@@ -11,14 +11,53 @@ import { Loader2 } from "lucide-react";
 import { useFormStatus } from "react-dom";
 import { BannerUpload } from "./banner-upload";
 
-function SubmitButton() {
+function FormButtons() {
     const { pending } = useFormStatus();
 
     return (
-        <Button type="submit" className="w-full" disabled={pending}>
-            {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Event
-        </Button>
+        <div className="flex flex-col gap-3 sm:flex-row">
+            <input
+                type="hidden"
+                name="status"
+                value="published"
+                id="event-status"
+            />
+
+            <Button
+                type="submit"
+                variant="outline"
+                className="flex-1"
+                disabled={pending}
+                onClick={() => {
+                    const input =
+                        document.getElementById(
+                            "event-status"
+                        ) as HTMLInputElement;
+
+                    input.value = "draft";
+                }}
+            >
+                {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Draft
+            </Button>
+
+            <Button
+                type="submit"
+                className="flex-1"
+                disabled={pending}
+                onClick={() => {
+                    const input =
+                        document.getElementById(
+                            "event-status"
+                        ) as HTMLInputElement;
+
+                    input.value = "published";
+                }}
+            >
+                {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Publish Event
+            </Button>
+        </div>
     );
 }
 
@@ -50,6 +89,84 @@ export function CreateEventForm() {
                     required
                 />
             </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="category">
+                    Category
+                </Label>
+
+                <select
+                    id="category"
+                    name="category"
+                    className="w-full rounded-xl border p-3 bg-background"
+                    required
+                >
+                    <option value="">
+                        Select Category
+                    </option>
+
+                    <option value="Technology">
+                        Technology
+                    </option>
+
+                    <option value="Hackathon">
+                        Hackathon
+                    </option>
+
+                    <option value="Workshop">
+                        Workshop
+                    </option>
+
+                    <option value="Seminar">
+                        Seminar
+                    </option>
+
+                    <option value="Conference">
+                        Conference
+                    </option>
+
+                    <option value="Startup">
+                        Startup
+                    </option>
+
+                    <option value="Networking">
+                        Networking
+                    </option>
+
+                    <option value="Cultural">
+                        Cultural
+                    </option>
+
+                    <option value="Sports">
+                        Sports
+                    </option>
+
+                    <option value="Music">
+                        Music
+                    </option>
+
+                    <option value="Gaming">
+                        Gaming
+                    </option>
+
+                    <option value="College Fest">
+                        College Fest
+                    </option>
+
+                    <option value="Competition">
+                        Competition
+                    </option>
+
+                    <option value="Webinar">
+                        Webinar
+                    </option>
+
+                    <option value="Other">
+                        Other
+                    </option>
+                </select>
+            </div>
+
 
             <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
@@ -91,6 +208,21 @@ export function CreateEventForm() {
                 </div>
             </div>
 
+            <div className="space-y-2">
+                <Label htmlFor="max_attendees">
+                    Maximum Attendees
+                </Label>
+
+                <Input
+                    id="max_attendees"
+                    name="max_attendees"
+                    type="number"
+                    min="1"
+                    placeholder="Leave empty for unlimited attendees"
+                />
+            </div>
+
+
             <div className="flex items-center space-x-2">
                 <input
                     type="checkbox"
@@ -115,7 +247,7 @@ export function CreateEventForm() {
                 />
             </div>
 
-            <SubmitButton />
+            <FormButtons />
         </form>
     );
 }

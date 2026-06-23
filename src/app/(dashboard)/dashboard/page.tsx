@@ -1,80 +1,380 @@
+import Link from "next/link";
+
 import { requireUser } from "@/lib/auth";
+import { getDashboardData } from "@/services/dashboard";
+
 import { StatsCard } from "@/components/dashboard/stats-card";
-import { EventCard } from "@/components/event/event-card";
-import { Calendar, Ticket, Heart, Clock } from "lucide-react";
 import { LogoutButton } from "@/components/shared/logout-button";
 
-const MOCK_REGISTERED_EVENTS = [
-    {
-        id: "1",
-        title: "Global Tech Summit 2026",
-        date: "Aug 12, 2026",
-        location: "San Francisco, CA",
-        image: "https://images.unsplash.com/photo-1540575861501-7ad0582371f3?q=80&w=800&auto=format&fit=crop",
-        category: "technology",
-        attendees: 1200,
-        price: "Free",
-    },
-    {
-        id: "2",
-        title: "Design Systems Workshop",
-        date: "Sept 05, 2026",
-        location: "Virtual",
-        image: "https://images.unsplash.com/photo-1558655146-d09347e92766?q=80&w=800&auto=format&fit=crop",
-        category: "design",
-        attendees: 450,
-        price: 49,
-    },
-];
+import {
+    Calendar,
+    Ticket,
+    CheckCircle,
+    IndianRupee,
+    CreditCard,
+} from "lucide-react";
+
+
+import {
+    getEventStatus,
+    getEventStatusClasses,
+} from "@/lib/event-status";
 
 export default async function DashboardPage() {
-    await requireUser();
+    await requireUser("/dashboard");
+
+    const dashboard =
+        await getDashboardData();
+
+    if (!dashboard) {
+        return (
+            <div>
+                Failed to load dashboard.
+            </div>
+        );
+    }
+
+    const now = new Date();
+
+    const upcomingEvents =
+        dashboard.registrations.filter(
+            (registration: any) =>
+                registration.events &&
+                new Date(
+                    registration.events.starts_at
+                ) > now
+        );
+
+    const completedEvents =
+        dashboard.registrations.filter(
+            (registration: any) =>
+                registration.events &&
+                new Date(
+                    registration.events.starts_at
+                ) <= now
+        );
+
     return (
         <div className="space-y-8">
-            <div className="flex items-center justify-between">
+
+            {/* Header */}
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-                    <p className="text-muted-foreground">Welcome back, John! Here's what's happening with your events.</p>
+                    <h1 className="text-3xl font-bold">
+                        Dashboard
+                    </h1>
+
+                    <p className="text-muted-foreground">
+                        Welcome back,{" "}
+                        {dashboard.profile?.full_name ??
+                            "User"}
+                    </p>
                 </div>
+
                 <LogoutButton />
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {/* Stats */}
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <StatsCard
-                    title="Total Registrations"
-                    value="12"
+                    title="Registered Events"
+                    value={
+                        dashboard.stats
+                            .totalRegistrations
+                    }
                     icon={Ticket}
-                    trend={{ value: 20, label: "from last month", isPositive: true }}
                 />
+
                 <StatsCard
                     title="Upcoming Events"
-                    value="3"
+                    value={
+                        dashboard.stats
+                            .upcomingEvents
+                    }
                     icon={Calendar}
                 />
+
                 <StatsCard
-                    title="Saved Events"
-                    value="24"
-                    icon={Heart}
+                    title="Checked In"
+                    value={
+                        dashboard.stats
+                            .checkedInEvents
+                    }
+                    icon={CheckCircle}
                 />
+
                 <StatsCard
-                    title="Hours Attended"
-                    value="48"
-                    icon={Clock}
-                    trend={{ value: 5, label: "from last month", isPositive: true }}
+                    title="Paid Events"
+                    value={
+                        dashboard.stats
+                            .paidEvents
+                    }
+                    icon={CreditCard}
                 />
             </div>
 
+            {/* Quick Actions */}
             <div>
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold">Registered Events</h2>
-                    <button className="text-sm text-primary hover:underline font-medium">View all</button>
-                </div>
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {MOCK_REGISTERED_EVENTS.map((event) => (
-                        <EventCard key={event.id} {...event} />
-                    ))}
+                <h2 className="text-2xl font-semibold mb-4">
+                    Quick Actions
+                </h2>
+
+                <div className="grid gap-4 md:grid-cols-3">
+
+                    <Link
+                        href="/events"
+                        className="rounded-2xl border p-6 hover:bg-muted/30 transition"
+                    >
+                        <h3 className="font-semibold">
+                            Discover Events
+                        </h3>
+
+                        <p className="text-sm text-muted-foreground mt-2">
+                            Browse upcoming events and register.
+                        </p>
+                    </Link>
+
+                    <Link
+                        href="/dashboard/events"
+                        className="rounded-2xl border p-6 hover:bg-muted/30 transition"
+                    >
+                        <h3 className="font-semibold">
+                            My Tickets
+                        </h3>
+
+                        <p className="text-sm text-muted-foreground mt-2">
+                            View all registered events and tickets.
+                        </p>
+                    </Link>
+
+                    <Link
+                        href="/dashboard/profile"
+                        className="rounded-2xl border p-6 hover:bg-muted/30 transition"
+                    >
+                        <h3 className="font-semibold">
+                            My Profile
+                        </h3>
+
+                        <p className="text-sm text-muted-foreground mt-2">
+                            Manage your account information.
+                        </p>
+                    </Link>
+
                 </div>
             </div>
+
+            {/* Empty State */}
+            {dashboard.registrations.length === 0 && (
+                <div className="rounded-2xl border p-10 text-center">
+                    <h2 className="text-2xl font-semibold">
+                        🎟 No Event Registrations Yet
+                    </h2>
+
+                    <p className="text-muted-foreground mt-3">
+                        Discover hackathons, workshops,
+                        conferences and meetups happening now.
+                    </p>
+
+                    <Link
+                        href="/events"
+                        className="mt-6 inline-flex rounded-xl bg-black text-white px-5 py-3"
+                    >
+                        Browse Events
+                    </Link>
+                </div>
+            )}
+
+            {/* Upcoming Events */}
+            {upcomingEvents.length > 0 && (
+                <div>
+                    <h2 className="text-2xl font-semibold mb-4">
+                        Upcoming Events
+                    </h2>
+
+                    <div className="grid gap-4">
+                        {upcomingEvents.map(
+                            (
+                                registration: any
+                            ) => {
+                                const event =
+                                    registration.events;
+
+                                const payment =
+                                    registration
+                                        .payments?.[0];
+
+                                return (
+                                    <Link
+                                        key={registration.id}
+                                        href={`/dashboard/events/${registration.id}`}
+                                        className="rounded-2xl border p-5 hover:bg-muted/30 transition"
+                                    >
+                                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                            <div>
+                                                <h3 className="text-lg font-semibold">
+                                                    {event.title}
+                                                </h3>
+
+                                                <p className="text-sm text-muted-foreground">
+                                                    {event.venue}
+                                                </p>
+
+                                                <p className="text-sm text-muted-foreground mt-1">
+                                                    {new Date(
+                                                        event.starts_at
+                                                    ).toLocaleString()}
+                                                </p>
+                                            </div>
+
+                                            <div className="flex flex-wrap gap-2">
+                                                {(() => {
+                                                    const status =
+                                                        getEventStatus(
+                                                            event.starts_at,
+                                                            event.ends_at,
+                                                            event.status
+                                                        );
+                                                    return (
+                                                        <span
+                                                            className={`rounded-full border px-3 py-1 text-sm ${getEventStatusClasses(
+                                                                status
+                                                            )}`}
+                                                        >
+                                                            {status}
+                                                        </span>
+                                                    );
+                                                })()}
+
+                                                <span className="rounded-full border px-3 py-1 text-sm">
+                                                    {event.is_paid
+                                                        ? `₹${event.ticket_price}`
+                                                        : "Free"}
+                                                </span>
+
+
+                                                <span className="rounded-full border px-3 py-1 text-sm">
+                                                    {payment?.status ??
+                                                        "Free"}
+                                                </span>
+
+                                                <span
+                                                    className={
+                                                        registration.checked_in
+                                                            ? "rounded-full bg-green-100 text-green-700 px-3 py-1 text-sm"
+                                                            : "rounded-full bg-yellow-100 text-yellow-700 px-3 py-1 text-sm"
+                                                    }
+                                                >
+                                                    {registration.checked_in
+                                                        ? "Checked In"
+                                                        : "Not Checked In"}
+                                                </span>
+
+                                            </div>
+
+                                        </div>
+                                    </Link>
+                                );
+                            }
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Completed Events */}
+            {completedEvents.length > 0 && (
+                <div>
+                    <h2 className="text-2xl font-semibold mb-4">
+                        Completed Events
+                    </h2>
+
+                    <div className="grid gap-4">
+                        {completedEvents.map(
+                            (
+                                registration: any
+                            ) => {
+                                const event =
+                                    registration.events;
+
+                                const payment =
+                                    registration
+                                        .payments?.[0];
+
+                                return (
+                                    <Link
+                                        key={registration.id}
+                                        href={`/dashboard/events/${registration.id}`}
+                                        className="rounded-2xl border p-5 opacity-80 hover:bg-muted/30 transition"
+                                    >
+                                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                            <div>
+                                                <h3 className="text-lg font-semibold">
+                                                    {event.title}
+                                                </h3>
+
+                                                <p className="text-sm text-muted-foreground">
+                                                    {event.venue}
+                                                </p>
+
+                                                <p className="text-sm text-muted-foreground mt-1">
+                                                    {new Date(
+                                                        event.starts_at
+                                                    ).toLocaleString()}
+                                                </p>
+                                            </div>
+
+                                            <div className="flex flex-wrap gap-2">
+                                                {(() => {
+                                                    const status =
+                                                        getEventStatus(
+                                                            event.starts_at,
+                                                            event.ends_at,
+                                                            event.status
+                                                        );
+                                                    return (
+                                                        <span
+                                                            className={`rounded-full border px-3 py-1 text-sm ${getEventStatusClasses(
+                                                                status
+                                                            )}`}
+                                                        >
+                                                            {status}
+                                                        </span>
+                                                    );
+                                                })()}
+
+                                                <span className="rounded-full border px-3 py-1 text-sm">
+                                                    {event.is_paid
+                                                        ? `₹${event.ticket_price}`
+                                                        : "Free"}
+                                                </span>
+
+
+                                                <span className="rounded-full border px-3 py-1 text-sm">
+                                                    {payment?.status ??
+                                                        "Free"}
+                                                </span>
+
+                                                <span
+                                                    className={
+                                                        registration.checked_in
+                                                            ? "rounded-full bg-green-100 text-green-700 px-3 py-1 text-sm"
+                                                            : "rounded-full bg-yellow-100 text-yellow-700 px-3 py-1 text-sm"
+                                                    }
+                                                >
+                                                    {registration.checked_in
+                                                        ? "Checked In"
+                                                        : "Not Checked In"}
+                                                </span>
+
+                                            </div>
+
+                                        </div>
+                                    </Link>
+                                );
+                            }
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

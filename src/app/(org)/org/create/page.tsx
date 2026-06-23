@@ -1,6 +1,8 @@
 import { createOrganization } from "@/services/organizations";
+import { requireUser } from "@/lib/auth";
 
-export default function CreateOrganizationPage() {
+export default async function CreateOrganizationPage() {
+    await requireUser("/org/create");
     return (
         <div className="max-w-2xl mx-auto py-10">
             <h1 className="text-3xl font-bold mb-8">

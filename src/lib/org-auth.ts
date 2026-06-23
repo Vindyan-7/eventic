@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-export async function requireOrgAdmin() {
+export async function requireOrgAdmin(redirectPath?: string) {
   const supabase = await createClient();
 
   const {
@@ -9,7 +9,10 @@ export async function requireOrgAdmin() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login");
+    const target = redirectPath
+      ? `/login?redirect=${encodeURIComponent(redirectPath)}`
+      : "/login";
+    redirect(target);
   }
 
   const { data: profile } = await supabase

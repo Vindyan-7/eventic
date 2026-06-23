@@ -15,10 +15,14 @@ export interface OrgEventDetail {
     max_attendees: number | null;
     is_paid: boolean;
     ticket_price: number;
+    category: string | null;
     status: "draft" | "published" | "completed" | "cancelled";
     created_at: string;
     updated_at: string;
     registration_count: number;
+    checked_in_count: number;
+    attendance_rate: number;
+    remaining_attendees: number;
 }
 
 type GetOrganizationEventResult =
@@ -66,10 +70,14 @@ export async function getOrganizationEvent(
             max_attendees,
             is_paid,
             ticket_price,
+            category,
             status,
             created_at,
             updated_at,
-            event_registrations ( id )
+            event_registrations (
+                id,
+                checked_in
+            )
         `)
         .eq("id", eventId)
         .eq("organization_id", organization.id)
@@ -80,8 +88,35 @@ export async function getOrganizationEvent(
     }
 
     // 4. Shape the result — count registrations from the joined rows
-    const registrations = event.event_registrations as { id: string }[] | null;
-    const registration_count = registrations?.length ?? 0;
+    const registrations =
+        event.event_registrations as {
+            id: string;
+            checked_in: boolean;
+        }[] | null;
+
+    const registration_count =
+        registrations?.length ?? 0;
+
+    const checked_in_count =
+        registrations?.filter(
+            (r) => r.checked_in
+        ).length ?? 0;
+
+    const remaining_attendees =
+        Math.max(
+            0,
+            registration_count -
+            checked_in_count
+        );
+
+    const attendance_rate =
+        registration_count === 0
+            ? 0
+            : Math.round(
+                (checked_in_count /
+                    registration_count) *
+                100
+            );
 
     const { event_registrations: _, ...eventFields } = event as typeof event & {
         event_registrations: unknown;
@@ -90,8 +125,17 @@ export async function getOrganizationEvent(
     return {
         data: {
             ...eventFields,
-            ticket_price: Number(eventFields.ticket_price ?? 0),
+            ticket_price: Number(
+                eventFields.ticket_price ?? 0
+            ),
+
             registration_count,
+
+            checked_in_count,
+
+            remaining_attendees,
+
+            attendance_rate,
         },
         error: null,
     };
