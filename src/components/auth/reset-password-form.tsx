@@ -29,14 +29,19 @@ function ResetPasswordFormContent() {
         // 1. Check for query parameter errors (like expired links)
         const errorParam = searchParams.get("error");
         const errorCodeParam = searchParams.get("error_code");
+        const errorDescriptionParam = searchParams.get("error_description");
 
-        if (errorParam || errorCodeParam) {
-            let msg = "The password reset link is invalid or expired.";
-            if (errorCodeParam === "otp_expired" || errorParam === "access_denied") {
-                msg = "The password reset link has expired or has already been used. Please request a new link.";
+        if (errorParam || errorCodeParam || errorDescriptionParam) {
+            let msg = "Recovery link has already been used.";
+            if (
+                errorCodeParam === "otp_expired" ||
+                errorParam === "access_denied" ||
+                errorDescriptionParam?.toLowerCase().includes("expired")
+            ) {
+                msg = "Recovery link expired. Please request a new password reset email.";
             }
-            setVerificationError(msg);
-            setIsVerifying(false);
+            toast.error(msg);
+            router.replace("/");
             return;
         }
 
@@ -47,13 +52,20 @@ function ResetPasswordFormContent() {
             supabase.auth.exchangeCodeForSession(codeParam)
                 .then(({ error }) => {
                     if (error) {
-                        setVerificationError("Failed to verify reset link: " + error.message);
+                        const errMsg = error.message.toLowerCase();
+                        if (errMsg.includes("expired") || error.status === 401) {
+                            toast.error("Recovery link expired. Please request a new password reset email.");
+                        } else {
+                            toast.error("Recovery link has already been used.");
+                        }
+                        router.replace("/");
+                    } else {
+                        setIsVerifying(false);
                     }
-                    setIsVerifying(false);
                 })
-                .catch((err) => {
-                    setVerificationError("An unexpected error occurred during link verification.");
-                    setIsVerifying(false);
+                .catch(() => {
+                    toast.error("Recovery link has already been used.");
+                    router.replace("/");
                 });
             return;
         }
@@ -72,28 +84,24 @@ function ResetPasswordFormContent() {
                     refresh_token: refreshToken,
                 }).then(({ error }) => {
                     if (error) {
-                        setVerificationError("Failed to verify access token: " + error.message);
+                        toast.error("Recovery link has already been used.");
+                        router.replace("/");
+                    } else {
+                        setIsVerifying(false);
                     }
-                    setIsVerifying(false);
                 }).catch(() => {
-                    setVerificationError("Failed to restore auth session from link.");
-                    setIsVerifying(false);
+                    toast.error("Recovery link has already been used.");
+                    router.replace("/");
                 });
                 return;
             }
         }
 
         // 4. No parameters: verify if we already have an active authenticated session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (!session) {
-                setVerificationError("Invalid access. Please use the password reset link sent to your email.");
-            }
-            setIsVerifying(false);
-        }).catch(() => {
-            setVerificationError("Failed to check active recovery session.");
-            setIsVerifying(false);
-        });
-    }, [searchParams]);
+        // Direct page access without code or hash parameters is considered a sessionless/invalid access.
+        toast.error("Invalid access. Please use the password reset link sent to your email.");
+        router.replace("/");
+    }, [searchParams, router]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -119,10 +127,10 @@ function ResetPasswordFormContent() {
             if (error) {
                 toast.error(error.message);
             } else {
-                toast.success("Password updated successfully! Please login with your new password.");
-                // Sign out to cleanly terminate the recovery session
+                // Sign out to cleanly terminate and destroy the recovery session
                 await supabase.auth.signOut();
-                router.push(`/login${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`);
+                toast.success("Password updated successfully. Please login with your new password.");
+                router.replace(`/login${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`);
             }
         } catch (err: any) {
             toast.error(err.message || "Failed to update password. Please try again.");
@@ -180,6 +188,9 @@ function ResetPasswordFormContent() {
                 <h2 className="text-lg font-semibold">Set New Password</h2>
                 <p className="text-sm text-muted-foreground mt-1">
                     Please enter your new password below.
+                </p>
+                <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2 font-medium">
+                    This recovery link expires in 5 minutes.
                 </p>
             </div>
 

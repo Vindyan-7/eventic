@@ -2,9 +2,12 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { Html5Qrcode } from "html5-qrcode";
-import { scanTicket, scanAndCheckIn } from "@/services/scan-ticket";
+import { scanTicket } from "@/services/scan-ticket";
+import { scanAndCheckIn } from "@/services/scan-and-checkin";
 import { ScanResultCard } from "./scan-result-card";
-import { Camera, Settings, RefreshCw } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Camera, RefreshCw } from "lucide-react";
 
 interface Props {
     eventId: string;
@@ -27,7 +30,7 @@ export function QRScanner({
 
     // 1. Load persisted mode from localStorage on mount (hydration safe)
     useEffect(() => {
-        const savedMode = localStorage.getItem("scanner_mode");
+        const savedMode = localStorage.getItem("scanner-mode");
         if (savedMode === "verify" || savedMode === "auto") {
             setScannerMode(savedMode);
         }
@@ -35,7 +38,7 @@ export function QRScanner({
 
     const handleModeChange = (mode: "auto" | "verify") => {
         setScannerMode(mode);
-        localStorage.setItem("scanner_mode", mode);
+        localStorage.setItem("scanner-mode", mode);
         // Clear current states on mode toggle
         setAttendee(null);
         setScanResult(null);
@@ -166,33 +169,43 @@ export function QRScanner({
 
     return (
         <div className="space-y-6 max-w-md mx-auto">
-            {/* Mode Switcher */}
-            <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <Settings className="h-3.5 w-3.5" /> Scanner Mode
-                </label>
-                <div className="flex gap-2 p-1 bg-muted rounded-xl border border-border/40">
-                    <button
+            {/* Mode Selector using RadioGroup */}
+            <div className="space-y-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Scanner Mode
+                </span>
+                
+                <RadioGroup
+                    value={scannerMode}
+                    onValueChange={(val: "auto" | "verify") => handleModeChange(val)}
+                    className="grid grid-cols-1 gap-3"
+                >
+                    <div 
                         onClick={() => handleModeChange("auto")}
-                        className={`flex-grow py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                            scannerMode === "auto"
-                                ? "bg-background text-foreground shadow-sm"
-                                : "text-muted-foreground hover:text-foreground"
+                        className={`flex items-start gap-3 rounded-2xl border p-4 bg-card hover:bg-muted/30 cursor-pointer transition-all ${
+                            scannerMode === "auto" ? "border-primary/40 ring-1 ring-primary/20" : "border-border/60"
                         }`}
                     >
-                        Auto Check-In
-                    </button>
-                    <button
+                        <RadioGroupItem value="auto" id="mode-auto" className="mt-1 cursor-pointer" />
+                        <Label htmlFor="mode-auto" className="flex flex-col gap-1 cursor-pointer w-full">
+                            <span className="font-extrabold text-sm text-foreground">Auto Check-In</span>
+                            <span className="text-xs text-muted-foreground font-normal">Best for large events</span>
+                        </Label>
+                    </div>
+                    
+                    <div 
                         onClick={() => handleModeChange("verify")}
-                        className={`flex-grow py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                            scannerMode === "verify"
-                                ? "bg-background text-foreground shadow-sm"
-                                : "text-muted-foreground hover:text-foreground"
+                        className={`flex items-start gap-3 rounded-2xl border p-4 bg-card hover:bg-muted/30 cursor-pointer transition-all ${
+                            scannerMode === "verify" ? "border-primary/40 ring-1 ring-primary/20" : "border-border/60"
                         }`}
                     >
-                        Verify Only
-                    </button>
-                </div>
+                        <RadioGroupItem value="verify" id="mode-verify" className="mt-1 cursor-pointer" />
+                        <Label htmlFor="mode-verify" className="flex flex-col gap-1 cursor-pointer w-full">
+                            <span className="font-extrabold text-sm text-foreground">Verify Ticket</span>
+                            <span className="text-xs text-muted-foreground font-normal">Review attendee before entry</span>
+                        </Label>
+                    </div>
+                </RadioGroup>
             </div>
 
             {/* QR Stream Reader viewport */}

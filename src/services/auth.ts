@@ -44,7 +44,10 @@ export async function signUp(formData: FormData) {
     ? redirectTo
     : "/dashboard";
 
-  redirect(target);
+  return {
+    success: true,
+    redirectTo: target,
+  };
 }
 
 export async function signIn(formData: FormData) {
@@ -71,7 +74,10 @@ export async function signIn(formData: FormData) {
     ? redirectTo
     : "/dashboard";
 
-  redirect(target);
+  return {
+    success: true,
+    redirectTo: target,
+  };
 }
 
 export async function signOut() {

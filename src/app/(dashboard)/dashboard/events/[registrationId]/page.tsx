@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import QRCode from "qrcode";
 
 import { createClient } from "@/lib/supabase/server";
@@ -15,6 +16,7 @@ import {
     Ticket,
     Building2,
     User,
+    ArrowLeft,
 } from "lucide-react";
 
 import {
@@ -97,6 +99,13 @@ export default async function TicketPage({
         <div className="container mx-auto px-4 py-10">
 
             <div className="max-w-5xl mx-auto">
+                <Link
+                    href="/dashboard/events"
+                    className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors font-medium"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to My Events
+                </Link>
 
                 <div className="overflow-hidden rounded-3xl border shadow-sm bg-background">
 

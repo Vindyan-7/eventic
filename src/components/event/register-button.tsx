@@ -103,12 +103,8 @@ export function RegisterButton({
           return;
         }
 
-        toast.success("Successfully registered!");
-        if (result.registrationId) {
-          router.push(`/dashboard/events/${result.registrationId}`);
-        } else {
-          router.push("/dashboard/events");
-        }
+        toast.success("Successfully registered for event.");
+        router.push("/dashboard/events");
       });
 
       return;
@@ -145,12 +141,8 @@ export function RegisterButton({
               return;
             }
 
-            toast.success("Payment successful & registration completed!");
-            if (result.registrationId) {
-              router.push(`/dashboard/events/${result.registrationId}`);
-            } else {
-              router.push("/dashboard/events");
-            }
+            toast.success("Successfully registered for event.");
+            router.push("/dashboard/events");
           });
         },
         modal: {

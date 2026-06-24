@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signUp } from "@/services/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { useActionState, useState } from "react";
+import { useActionState, useState, useEffect } from "react";
 
 export function RegisterForm() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const redirectPath = searchParams.get("redirect") || "";
     const [overrideState, setOverrideState] = useState<any>(null);
@@ -23,6 +24,12 @@ export function RegisterForm() {
     );
 
     const displayState = overrideState !== null ? overrideState : state;
+
+    useEffect(() => {
+        if (displayState?.success && displayState?.redirectTo) {
+            router.replace(displayState.redirectTo);
+        }
+    }, [displayState, router]);
 
     if (displayState?.alreadyExists) {
         return (

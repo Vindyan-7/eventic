@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "@/services/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 
 export function LoginForm() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const redirectPath = searchParams.get("redirect") || "";
 
@@ -28,6 +29,12 @@ export function LoginForm() {
             },
             null
         );
+
+    useEffect(() => {
+        if (state?.success && state?.redirectTo) {
+            router.replace(state.redirectTo);
+        }
+    }, [state, router]);
 
     return (
         <form

@@ -33,19 +33,19 @@ async function verifyEventOwnership(supabase: any, eventId: string) {
   return { success: true };
 }
 
-export async function scanTicket(
+export async function scanAndCheckIn(
   registrationId: string,
   eventId: string
 ) {
   const supabase = await createClient();
 
-  // Verify ownership
+  // 1. Verify ownership of the event
   const ownership = await verifyEventOwnership(supabase, eventId);
   if (ownership.error) {
     return { error: ownership.error };
   }
 
-  // Fetch registration details
+  // 2. Validate QR / Fetch registration details
   const { data, error } = await supabase
     .from("event_registrations")
     .select(`
@@ -71,15 +71,65 @@ export async function scanTicket(
 
   const event = Array.isArray(data.events) ? data.events[0] : data.events;
 
+  // 3. Validate event correlation
   if (!event || event.id !== eventId) {
     return { error: "Ticket belongs to another event" };
   }
 
+  // 4. If already checked in, return alreadyCheckedIn: true
+  if (data.checked_in) {
+    return {
+      success: true,
+      attendee: data,
+      checkedIn: true,
+      checkedInAt: data.checked_in_at,
+      alreadyCheckedIn: true,
+    };
+  }
+
+  // 5. Otherwise, check attendee in (update the db table)
+  const checkInTime = new Date().toISOString();
+  const { error: updateError } = await supabase
+    .from("event_registrations")
+    .update({
+      checked_in: true,
+      checked_in_at: checkInTime,
+    })
+    .eq("id", registrationId);
+
+  if (updateError) {
+    return { error: updateError.message };
+  }
+
+  // Fetch updated attendee details
+  const { data: updatedData, error: fetchError } = await supabase
+    .from("event_registrations")
+    .select(`
+      id,
+      created_at,
+      checked_in,
+      checked_in_at,
+      profiles!event_registrations_user_id_fkey (
+        full_name,
+        email
+      ),
+      events (
+        id,
+        title
+      )
+    `)
+    .eq("id", registrationId)
+    .single();
+
+  if (fetchError || !updatedData) {
+    return { error: "Failed to fetch updated attendee info" };
+  }
+
   return {
     success: true,
-    attendee: data,
-    checkedIn: data.checked_in,
-    checkedInAt: data.checked_in_at,
-    alreadyCheckedIn: data.checked_in,
+    attendee: updatedData,
+    checkedIn: true,
+    checkedInAt: checkInTime,
+    alreadyCheckedIn: false,
   };
 }
