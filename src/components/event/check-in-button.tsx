@@ -19,10 +19,12 @@ import {
 
 interface Props {
     registrationId: string;
+    onSuccess?: (checkedInAt: string) => void;
 }
 
 export function CheckInButton({
     registrationId,
+    onSuccess,
 }: Props) {
     const [pending, startTransition] = useTransition();
     const router = useRouter();
@@ -37,6 +39,9 @@ export function CheckInButton({
             }
 
             toast.success("Attendee checked in successfully");
+            if (onSuccess) {
+                onSuccess(result.checkedInAt || new Date().toISOString());
+            }
             router.refresh();
         });
     }
@@ -46,10 +51,10 @@ export function CheckInButton({
             <AlertDialogTrigger asChild>
                 <button
                     disabled={pending}
-                    className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
+                    className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-6 py-3 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors cursor-pointer"
                 >
                     <CheckCircle2 className="h-4 w-4" />
-                    {pending ? "Checking In..." : "Check In"}
+                    {pending ? "Checking In..." : "Confirm Check In"}
                 </button>
             </AlertDialogTrigger>
             <AlertDialogContent>

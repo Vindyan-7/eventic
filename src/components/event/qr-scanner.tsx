@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { Html5Qrcode } from "html5-qrcode";
-import { scanTicket } from "@/services/scan-ticket";
+import { scanTicket, scanAndCheckIn } from "@/services/scan-ticket";
 import { ScanResultCard } from "./scan-result-card";
+import { Camera, Settings, RefreshCw } from "lucide-react";
 
 interface Props {
     eventId: string;
@@ -12,74 +13,61 @@ interface Props {
 export function QRScanner({
     eventId,
 }: Props) {
-    const [error, setError] =
-        useState<string>("");
+    const [scannerMode, setScannerMode] = useState<"auto" | "verify">("auto");
+    const [error, setError] = useState<string>("");
+    const [status, setStatus] = useState<string>("Initializing scanner...");
+    const [attendee, setAttendee] = useState<any>(null);
+    const [scanResult, setScanResult] = useState<{
+        checkedIn: boolean;
+        checkedInAt: string | null;
+        alreadyCheckedIn: boolean;
+    } | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [pending, startTransition] = useTransition();
 
-    const [status, setStatus] =
-        useState<string>(
-            "Initializing scanner..."
-        );
-
-    const [attendee, setAttendee] =
-        useState<any>(null);
-
-    const [isProcessing, setIsProcessing] =
-        useState(false);
-
-    const [pending, startTransition] =
-        useTransition();
-
+    // 1. Load persisted mode from localStorage on mount (hydration safe)
     useEffect(() => {
-        let scanner: Html5Qrcode | null =
-            null;
+        const savedMode = localStorage.getItem("scanner_mode");
+        if (savedMode === "verify" || savedMode === "auto") {
+            setScannerMode(savedMode);
+        }
+    }, []);
+
+    const handleModeChange = (mode: "auto" | "verify") => {
+        setScannerMode(mode);
+        localStorage.setItem("scanner_mode", mode);
+        // Clear current states on mode toggle
+        setAttendee(null);
+        setScanResult(null);
+        setError("");
+        setStatus("Camera active. Scan a ticket.");
+        setIsProcessing(false);
+    };
+
+    // 2. Scanner execution hook
+    useEffect(() => {
+        let scanner: Html5Qrcode | null = null;
 
         async function startScanner() {
             try {
-                setStatus(
-                    "Checking camera access..."
-                );
+                setStatus("Checking camera access...");
 
-                if (
-                    !navigator.mediaDevices ||
-                    !navigator.mediaDevices
-                        .getUserMedia
-                ) {
-                    setError(
-                        "Camera API is not available in this browser."
-                    );
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    setError("Camera API is not available in this browser.");
                     return;
                 }
 
-                const stream =
-                    await navigator.mediaDevices.getUserMedia(
-                        {
-                            video: {
-                                facingMode:
-                                    "environment",
-                            },
-                        }
-                    );
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: "environment" },
+                });
 
-                stream
-                    .getTracks()
-                    .forEach((track) =>
-                        track.stop()
-                    );
+                stream.getTracks().forEach((track) => track.stop());
 
-                setStatus(
-                    "Starting camera..."
-                );
-
-                scanner =
-                    new Html5Qrcode(
-                        "qr-reader"
-                    );
+                setStatus("Starting camera...");
+                scanner = new Html5Qrcode("qr-reader");
 
                 await scanner.start(
-                    {
-                        facingMode:
-                            "environment",
-                    },
+                    { facingMode: "environment" },
                     {
                         fps: 10,
                         qrbox: {
@@ -87,82 +75,67 @@ export function QRScanner({
                             height: 250,
                         },
                     },
-                    (
-                        decodedText
-                    ) => {
-                        if (isProcessing) {
-                            return;
-                        }
-
-                        console.log(
-                            "QR DETECTED:",
-                            decodedText
-                        );
-
-                        setStatus(
-                            "QR Code detected"
-                        );
-
+                    (decodedText) => {
+                        // Prevent multi-triggering
+                        if (isProcessing) return;
                         setIsProcessing(true);
+                        setStatus("QR Code detected");
 
-                        startTransition(
-                            async () => {
-                                const result =
-                                    await scanTicket(
-                                        decodedText,
-                                        eventId
-                                    );
+                        startTransition(async () => {
+                            let result;
+                            if (scannerMode === "auto") {
+                                result = await scanAndCheckIn(decodedText, eventId);
+                            } else {
+                                result = await scanTicket(decodedText, eventId);
+                            }
 
-                                if (
-                                    "error" in result
-                                ) {
-                                    setError(
-                                        result.error || "Verification failed"
-                                    );
+                            if ("error" in result) {
+                                setError(result.error || "Verification failed");
+                                setStatus("Verification failed");
+                                // Auto reset scanner error state after 2.5 seconds
+                                setTimeout(() => {
+                                    setError("");
+                                    setStatus("Camera active. Scan a ticket.");
+                                    setIsProcessing(false);
+                                }, 2500);
+                                return;
+                            }
 
-                                    setTimeout(() => {
-                                        setIsProcessing(false);
-                                    }, 2000);
+                            setAttendee(result.attendee);
+                            setScanResult({
+                                checkedIn: result.checkedIn ?? false,
+                                checkedInAt: result.checkedInAt ?? null,
+                                alreadyCheckedIn: result.alreadyCheckedIn ?? false,
+                            });
+                            setStatus(result.alreadyCheckedIn ? "Already checked in" : "Check-in successful");
 
-                                    return;
-                                }
-
-                                setAttendee(
-                                    result.attendee
-                                );
-
-                                setStatus(
-                                    "Ticket verified"
-                                );
-
+                            // If auto mode, trigger automatic screen reset after 2 seconds
+                            if (scannerMode === "auto") {
+                                setTimeout(() => {
+                                    setAttendee(null);
+                                    setScanResult(null);
+                                    setError("");
+                                    setStatus("Camera active. Scan a ticket.");
+                                    setIsProcessing(false);
+                                }, 2000);
+                            } else {
+                                // In verify mode, let processing trigger reset after 2 seconds, but keep attendee on-screen
                                 setTimeout(() => {
                                     setIsProcessing(false);
                                 }, 2000);
                             }
-                        );
+                        });
                     },
                     () => {
-                        // Ignore scan noise
+                        // Ignore scanner scan noise
                     }
                 );
 
-                setStatus(
-                    "Camera active. Scan a ticket."
-                );
+                setStatus("Camera active. Scan a ticket.");
             } catch (err: any) {
-                console.error(
-                    "QR Scanner Error:",
-                    err
-                );
-
-                setError(
-                    err?.message ||
-                    "Failed to access camera."
-                );
-
-                setStatus(
-                    "Scanner failed"
-                );
+                console.error("QR Scanner Error:", err);
+                setError(err?.message || "Failed to access camera.");
+                setStatus("Scanner failed");
             }
         }
 
@@ -171,74 +144,136 @@ export function QRScanner({
         return () => {
             async function cleanup() {
                 try {
-                    if (
-                        scanner &&
-                        scanner.isScanning
-                    ) {
+                    if (scanner && scanner.isScanning) {
                         await scanner.stop();
                         await scanner.clear();
                     }
-                } catch (
-                cleanupError
-                ) {
-                    console.error(
-                        cleanupError
-                    );
+                } catch (cleanupError) {
+                    console.error(cleanupError);
                 }
             }
-
             cleanup();
         };
-    }, [eventId]);
+    }, [eventId, scannerMode, isProcessing]);
+
+    const handleManualReset = () => {
+        setAttendee(null);
+        setScanResult(null);
+        setError("");
+        setStatus("Camera active. Scan a ticket.");
+        setIsProcessing(false);
+    };
 
     return (
-        <div className="space-y-4">
-            <div
-                id="qr-reader"
-                className="w-full max-w-md overflow-hidden rounded-xl border"
-            />
-
-            <div className="rounded-xl border p-4">
-                <p className="font-medium">
-                    Status
-                </p>
-
-                <p className="text-sm text-muted-foreground">
-                    {status}
-                </p>
+        <div className="space-y-6 max-w-md mx-auto">
+            {/* Mode Switcher */}
+            <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Settings className="h-3.5 w-3.5" /> Scanner Mode
+                </label>
+                <div className="flex gap-2 p-1 bg-muted rounded-xl border border-border/40">
+                    <button
+                        onClick={() => handleModeChange("auto")}
+                        className={`flex-grow py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                            scannerMode === "auto"
+                                ? "bg-background text-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                        }`}
+                    >
+                        Auto Check-In
+                    </button>
+                    <button
+                        onClick={() => handleModeChange("verify")}
+                        className={`flex-grow py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                            scannerMode === "verify"
+                                ? "bg-background text-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                        }`}
+                    >
+                        Verify Only
+                    </button>
+                </div>
             </div>
 
-            {(attendee || error) && (
+            {/* QR Stream Reader viewport */}
+            <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-black aspect-square max-w-md">
+                <div id="qr-reader" className="w-full h-full object-cover" />
+                {/* Visual Scanner HUD guide */}
+                <div className="absolute inset-0 border-[40px] border-black/40 pointer-events-none flex items-center justify-center">
+                    <div className="w-[180px] h-[180px] border-2 border-dashed border-primary/60 rounded-xl relative">
+                        <div className="absolute -top-1.5 -left-1.5 w-4 h-4 border-t-4 border-l-4 border-primary" />
+                        <div className="absolute -top-1.5 -right-1.5 w-4 h-4 border-t-4 border-r-4 border-primary" />
+                        <div className="absolute -bottom-1.5 -left-1.5 w-4 h-4 border-b-4 border-l-4 border-primary" />
+                        <div className="absolute -bottom-1.5 -right-1.5 w-4 h-4 border-b-4 border-r-4 border-primary" />
+                    </div>
+                </div>
+            </div>
+
+            {/* Status Indicator */}
+            <div className="rounded-2xl border p-4 bg-card flex items-center justify-between">
+                <div className="space-y-0.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                        <Camera className="h-3 w-3" /> Status
+                    </p>
+                    <p className="text-sm font-semibold">{status}</p>
+                </div>
+                {(attendee || error) && (
+                    <button
+                        onClick={handleManualReset}
+                        className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+                        title="Reset Scanner"
+                    >
+                        <RefreshCw className="h-4 w-4" />
+                    </button>
+                )}
+            </div>
+
+            {/* Scanner Manual Scan next Button for Verify Mode */}
+            {scannerMode === "verify" && (attendee || error) && (
                 <button
-                    onClick={() => {
-                        setAttendee(null);
-                        setError("");
-                        setStatus("Camera active. Scan a ticket.");
-                        setIsProcessing(false);
-                    }}
-                    className="w-full rounded-xl bg-black text-white px-6 py-3 font-semibold hover:bg-black/90 transition-colors"
+                    onClick={handleManualReset}
+                    className="w-full rounded-2xl bg-black text-white px-6 py-3.5 font-bold hover:bg-black/90 transition-colors shadow-sm cursor-pointer"
                 >
                     Scan Next Ticket
                 </button>
             )}
 
-            {attendee && (
+            {/* Success ScanResultCard */}
+            {attendee && scanResult && (
                 <ScanResultCard
                     attendee={attendee}
+                    checkedIn={scanResult.checkedIn}
+                    checkedInAt={scanResult.checkedInAt}
+                    alreadyCheckedIn={scanResult.alreadyCheckedIn}
+                    onCheckInSuccess={(time) => {
+                        setScanResult((prev: any) => {
+                            if (!prev) return null;
+                            return {
+                                ...prev,
+                                checkedIn: true,
+                                checkedInAt: time,
+                                alreadyCheckedIn: false,
+                            };
+                        });
+                        setStatus("Check-in successful");
+                    }}
                 />
             )}
 
+            {/* Red Error status block */}
             {error && (
-                <div className="rounded-xl border border-red-500 bg-red-50 p-4 text-red-600">
-                    <p className="font-medium">
-                        Verification Error
-                    </p>
-
-                    <p className="text-sm">
-                        {error}
-                    </p>
+                <div className="rounded-2xl border border-red-500/20 bg-red-50 dark:bg-red-950/20 p-4 text-red-600 dark:text-red-400 flex items-start gap-3">
+                    <div className="mt-0.5 shrink-0">
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div className="space-y-1">
+                        <p className="font-bold text-sm">Scanner Error</p>
+                        <p className="text-xs opacity-90">{error}</p>
+                    </div>
                 </div>
             )}
         </div>
     );
-}   
+}
