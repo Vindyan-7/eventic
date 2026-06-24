@@ -112,8 +112,8 @@ export function QRScanner({
                             });
                             setStatus(result.alreadyCheckedIn ? "Already checked in" : "Check-in successful");
 
-                            // If auto mode, trigger automatic screen reset after 2 seconds
-                            if (scannerMode === "auto") {
+                            // If auto mode or already checked in, trigger automatic screen reset after 2 seconds
+                            if (scannerMode === "auto" || result.alreadyCheckedIn) {
                                 setTimeout(() => {
                                     setAttendee(null);
                                     setScanResult(null);
@@ -122,7 +122,7 @@ export function QRScanner({
                                     setIsProcessing(false);
                                 }, 2000);
                             } else {
-                                // In verify mode, let processing trigger reset after 2 seconds, but keep attendee on-screen
+                                // In verify mode for unchecked tickets, let processing trigger reset after 2 seconds to allow next scan, but keep attendee on-screen
                                 setTimeout(() => {
                                     setIsProcessing(false);
                                 }, 2000);
@@ -269,6 +269,14 @@ export function QRScanner({
                             };
                         });
                         setStatus("Check-in successful");
+                        // Auto reset scanner state after 2 seconds
+                        setTimeout(() => {
+                            setAttendee(null);
+                            setScanResult(null);
+                            setError("");
+                            setStatus("Camera active. Scan a ticket.");
+                            setIsProcessing(false);
+                        }, 2000);
                     }}
                 />
             )}
