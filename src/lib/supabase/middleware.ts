@@ -3,9 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+    request,
   });
 
   const supabase = createServerClient(
@@ -18,29 +16,14 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value);
+            supabaseResponse.cookies.set(name, value, options);
           });
-
-          // Rebuild the Cookie header string to propagate refreshed cookies to Server Components
-          const cookieString = request.cookies.getAll()
-            .map((c) => `${c.name}=${c.value}`)
-            .join("; ");
-          request.headers.set("cookie", cookieString);
-
-          supabaseResponse = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
-
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
         },
       },
     }
   );
 
+  // IMPORTANT: Do not remove this call. Refreshes the session.
   await supabase.auth.getUser();
 
   return supabaseResponse;
