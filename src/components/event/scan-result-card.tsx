@@ -35,9 +35,9 @@ export function ScanResultCard({
     if (checkedIn) {
         if (alreadyCheckedIn) {
             statusText = "Already Checked In";
-            statusColorClass = "border-emerald-500/20 bg-emerald-500/10 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300";
-            badgeColorClass = "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
-            StatusIcon = CheckCircle2;
+            statusColorClass = "border-amber-500/20 bg-amber-500/10 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300";
+            badgeColorClass = "bg-amber-500/10 text-amber-500 border-amber-500/20";
+            StatusIcon = AlertTriangle;
         } else {
             statusText = "Checked In Successfully";
             statusColorClass = "border-emerald-500/20 bg-emerald-500/15 dark:bg-emerald-950/25 text-emerald-700 dark:text-emerald-300";

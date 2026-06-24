@@ -20,9 +20,10 @@ import { useAppModeStore } from "@/store/app-mode";
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
     profile: any;
+    onNavigate?: () => void;
 }
 
-export function Sidebar({ profile, className }: SidebarProps) {
+export function Sidebar({ profile, className, onNavigate }: SidebarProps) {
     const pathname = usePathname();
     const { mode } = useAppModeStore();
 
@@ -108,7 +109,7 @@ export function Sidebar({ profile, className }: SidebarProps) {
     return (
         <div className={cn("pb-12 h-full flex flex-col", className)}>
             <div className="p-6 mb-2">
-                <Link href="/" className="flex items-center gap-2">
+                <Link href="/" className="flex items-center gap-2" onClick={() => onNavigate?.()}>
                     <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                         <span className="text-primary-foreground font-bold text-lg">E</span>
                     </div>
@@ -126,6 +127,7 @@ export function Sidebar({ profile, className }: SidebarProps) {
                             <Link
                                 key={item.href}
                                 href={item.href}
+                                onClick={() => onNavigate?.()}
                                 className={cn(
                                     "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground",
                                     isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
