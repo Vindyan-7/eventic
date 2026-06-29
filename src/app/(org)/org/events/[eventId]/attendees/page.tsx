@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 import { notFound } from "next/navigation";
-import { requireOrgAdmin } from "@/lib/org-auth";
+import { requireOrgAdminOrScanner } from "@/lib/org-auth";
 import { getOrganizationEvent } from "@/services/event-management";
 import { getEventAttendees } from "@/services/event-attendees";
 import { AttendeeListClient } from "@/components/event/attendee-list-client";
@@ -11,7 +11,7 @@ export default async function EventAttendeesPage({
     params: Promise<{ eventId: string }>;
 }) {
     const { eventId } = await params;
-    await requireOrgAdmin(`/org/events/${eventId}/attendees`);
+    const { isScanner } = await requireOrgAdminOrScanner(eventId);
 
     const [eventResult, attendeesResult] =
         await Promise.all([

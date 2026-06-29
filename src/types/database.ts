@@ -12,6 +12,7 @@ export interface Event {
   is_paid: boolean;
   ticket_price: number;
   status: "draft" | "published" | "completed" | "cancelled";
+  custom_questions?: any;
   created_at: string;
   updated_at: string;
 }

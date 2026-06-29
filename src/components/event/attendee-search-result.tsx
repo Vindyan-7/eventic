@@ -247,6 +247,23 @@ export function AttendeeSearchResult({
                             </div>
                         )}
 
+                        {/* Custom answers section */}
+                        {attendee.custom_answers && Object.keys(attendee.custom_answers).length > 0 && (
+                            <div className="space-y-4">
+                                <h4 className="text-xs uppercase font-extrabold tracking-widest text-muted-foreground">Custom Answers</h4>
+                                <div className="space-y-3">
+                                    {Object.entries(attendee.custom_answers).map(([key, value]) => (
+                                        <div key={key} className="p-3.5 rounded-xl bg-card border">
+                                            <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">{key}</span>
+                                            <span className="text-sm font-semibold text-foreground mt-1 block">
+                                                {String(value)}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Action block inside sheet */}
                         {!attendee.checked_in && (
                             <div className="pt-4 border-t flex flex-col gap-3">

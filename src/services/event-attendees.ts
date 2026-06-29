@@ -19,6 +19,8 @@ export interface EventAttendee {
     checked_in_at: string | null;
     payment_status: string;
     ticket_number: string;
+    custom_answers?: Record<string, string> | null;
+    source?: string | null;
 }
 
 type GetEventAttendeesResult =
@@ -91,6 +93,8 @@ export async function getEventAttendees(
     checked_in,
     checked_in_at,
     ticket_number,
+    custom_answers,
+    source,
     profiles!event_registrations_user_id_fkey (
         id,
         full_name,
@@ -152,6 +156,10 @@ return {
         reg.ticket_number,
     payment_status:
         payment?.status ?? "free",
+    custom_answers:
+        reg.custom_answers as Record<string, string> | null,
+    source:
+        reg.source,
 };
             });
 

@@ -1,7 +1,8 @@
-import { requireOrgAdmin } from "@/lib/org-auth";
+import { requireOrgAdminOrScanner } from "@/lib/org-auth";
 import { QRScanner } from "@/components/event/qr-scanner";
 import { getOrganizationEvent } from "@/services/event-management";
 import { notFound } from "next/navigation";
+import { ScanCodeGenerator } from "@/components/event/scan-code-generator";
 
 export default async function ScanPage({
     params,
@@ -13,7 +14,7 @@ export default async function ScanPage({
     const { eventId } =
         await params;
 
-    await requireOrgAdmin(`/org/events/${eventId}/scan`);
+    const { isScanner } = await requireOrgAdminOrScanner(eventId);
 
     const result =
         await getOrganizationEvent(
@@ -120,18 +121,20 @@ export default async function ScanPage({
 
             </div>
 
-            {/* Scanner */}
+            {/* Main scanner grid */}
+            <div className="grid gap-6 md:grid-cols-3 items-start">
+                <div className={`${isScanner ? "md:col-span-3" : "md:col-span-2"} rounded-2xl border p-6 bg-card`}>
+                    <h3 className="text-xl font-semibold mb-4">
+                        Scan Ticket
+                    </h3>
+                    <QRScanner eventId={eventId} />
+                </div>
 
-            <div className="rounded-2xl border p-6">
-
-                <h3 className="text-xl font-semibold mb-4">
-                    Scan Ticket
-                </h3>
-
-                <QRScanner
-                    eventId={eventId}
-                />
-
+                {!isScanner && (
+                    <div>
+                        <ScanCodeGenerator eventId={eventId} />
+                    </div>
+                )}
             </div>
 
         </div>

@@ -320,6 +320,7 @@ export default async function EventPage({
                                 eventStatus={status}
                                 slug={slug}
                                 isAuthenticated={isAuthenticated}
+                                customQuestions={event.custom_questions}
                             />
 
                             <div className="mt-4">

@@ -28,9 +28,35 @@ export function Sidebar({ profile, className, onNavigate }: SidebarProps) {
     const { mode } = useAppModeStore();
 
     const isOrganizer = profile?.role === "org_admin";
+    const isVolunteer = profile?.role === "volunteer";
 
-    const items =
-        mode === "organization" &&
+    // Extract event ID from pathname if present
+    const eventIdMatch = pathname.match(/\/org\/events\/([^\/]+)/);
+    const eventId = eventIdMatch ? eventIdMatch[1] : "";
+
+    const items = isVolunteer
+        ? (eventId
+            ? [
+                {
+                    label: "Scan Tickets",
+                    href: `/org/events/${eventId}/scan`,
+                    icon: Search,
+                },
+                {
+                    label: "Attendees List",
+                    href: `/org/events/${eventId}/attendees`,
+                    icon: User,
+                },
+            ]
+            : [
+                {
+                    label: "Scanner Portal",
+                    href: `/login/scan`,
+                    icon: Search,
+                }
+            ]
+          )
+        : mode === "organization" &&
             isOrganizer
             ? [
                 {

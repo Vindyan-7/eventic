@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
+import { cookies } from "next/headers";
+import { validateScanSession } from "@/services/scan-code-actions";
+
 export async function requireOrgAdmin(redirectPath?: string) {
   const supabase = await createClient();
 
@@ -26,4 +29,22 @@ export async function requireOrgAdmin(redirectPath?: string) {
   }
 
   return user;
+}
+
+export async function requireOrgAdminOrScanner(eventId: string) {
+  // 1. Check for staff scanner session cookie
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get(`scan_session_${eventId}`);
+  
+  if (sessionCookie) {
+    const code = sessionCookie.value;
+    const isValid = await validateScanSession(eventId, code);
+    if (isValid) {
+      return { isScanner: true };
+    }
+  }
+
+  // 2. Fall back to organization administrator checks
+  const user = await requireOrgAdmin();
+  return { user, isScanner: false };
 }

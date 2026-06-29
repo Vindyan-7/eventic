@@ -147,6 +147,16 @@ export async function updateEvent(eventId: string, formData: FormData) {
     const ticket_price = Number(formData.get("ticket_price") || 0);
     const category = formData.get("category") as string;
     const status = formData.get("status") as string;
+    const custom_questions_raw = formData.get("custom_questions") as string;
+    
+    let custom_questions = [];
+    if (custom_questions_raw) {
+        try {
+            custom_questions = JSON.parse(custom_questions_raw);
+        } catch (e) {
+            console.error("Failed to parse custom questions", e);
+        }
+    }
 
     let bannerUrl = existingEvent.banner_url;
     if (bannerFile && bannerFile.size > 0) {
@@ -173,6 +183,7 @@ export async function updateEvent(eventId: string, formData: FormData) {
             banner_url: bannerUrl,
             category,
             status,
+            custom_questions,
             updated_at: new Date().toISOString(),
         })
         .eq("id", eventId);

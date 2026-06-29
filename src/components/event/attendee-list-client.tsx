@@ -5,7 +5,7 @@ import { EventAttendee } from "@/services/event-attendees";
 import { checkInAttendee } from "@/services/event-attendance";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { CheckCircle2, Clock, Search, Loader2, ArrowUpDown } from "lucide-react";
+import { CheckCircle2, Clock, Search, Loader2, ArrowUpDown, FileDown } from "lucide-react";
 
 interface Props {
     initialAttendees: EventAttendee[];
@@ -21,6 +21,52 @@ export function AttendeeListClient({ initialAttendees, eventMaxAttendees }: Prop
     const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
     const [sortBy, setSortBy] = useState<SortOption>("date_asc");
     const [pendingMap, setPendingMap] = useState<Record<string, boolean>>({});
+
+    // Export list to CSV
+    const handleExportCSV = () => {
+        const headers = ["Ticket Number", "Name", "Email", "Registered At", "Check-in Time", "Payment Status", "Custom Answers"];
+        
+        const rows = filteredAndSortedAttendees.map((a) => {
+            const answersStr = a.custom_answers 
+                ? Object.entries(a.custom_answers)
+                    .map(([q, val]) => `${q}: ${val}`)
+                    .join(" | ")
+                : "";
+
+            return [
+                a.ticket_number || "N/A",
+                a.full_name || "Unnamed User",
+                a.email,
+                new Date(a.registered_at).toLocaleString("en-IN"),
+                a.checked_in_at ? new Date(a.checked_in_at).toLocaleString("en-IN") : "Pending",
+                a.payment_status.toUpperCase(),
+                answersStr
+            ];
+        });
+
+        const csvContent = [
+            headers.join(","),
+            ...rows.map((row) =>
+                row
+                    .map((val) => {
+                        const str = String(val).replace(/"/g, '""');
+                        return str.includes(",") || str.includes("\n") || str.includes('"') ? `"${str}"` : str;
+                    })
+                    .join(",")
+            )
+        ].join("\n");
+
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `attendees-${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = "hidden";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("CSV exported successfully");
+    };
 
     // 1. Dynamic Stats computed from state
     const totalCount = attendees.length;
@@ -233,6 +279,15 @@ export function AttendeeListClient({ initialAttendees, eventMaxAttendees }: Prop
                             <option value="ticket_desc" className="bg-card">Ticket: High to Low</option>
                         </select>
                     </div>
+
+                    {/* Export CSV button */}
+                    <button
+                        onClick={handleExportCSV}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-input bg-background hover:bg-muted hover:text-accent-foreground px-4 py-2 text-xs font-bold transition-all cursor-pointer h-9 shadow-xs"
+                    >
+                        <FileDown className="h-3.5 w-3.5" />
+                        Export CSV
+                    </button>
                 </div>
             </div>
 
@@ -279,7 +334,16 @@ export function AttendeeListClient({ initialAttendees, eventMaxAttendees }: Prop
                                                 {attendee.ticket_number || "N/A"}
                                             </td>
                                             <td className="p-4 text-muted-foreground break-all">
-                                                {attendee.email}
+                                                <div>{attendee.email}</div>
+                                                {attendee.custom_answers && Object.keys(attendee.custom_answers).length > 0 && (
+                                                    <div className="mt-1 flex flex-wrap gap-1 text-[10px]">
+                                                        {Object.entries(attendee.custom_answers).map(([q, val]) => (
+                                                            <span key={q} className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground border">
+                                                                {q}: {String(val)}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="p-4 text-sm text-muted-foreground">
                                                 {new Date(attendee.registered_at).toLocaleDateString("en-IN", {

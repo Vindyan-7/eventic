@@ -25,9 +25,12 @@ interface EditEventFormProps {
         banner_url: string | null;
         max_attendees: number | null;
         category: string | null;
+        custom_questions?: any;
         status?: string;
     };
 }
+
+import { Plus, Trash2, HelpCircle } from "lucide-react";
 
 function SubmitButton() {
     const { pending } = useFormStatus();
@@ -49,14 +52,40 @@ function SubmitButton() {
 export function EditEventForm({
     event,
 }: EditEventFormProps) {
-    const [preview, setPreview] =
-        useState<string | null>(
-            event.banner_url
+    const [preview, setPreview] = useState<string | null>(
+        event.banner_url
+    );
+    const [questions, setQuestions] = useState<any[]>(
+        Array.isArray(event.custom_questions) ? event.custom_questions : []
+    );
+
+    const addQuestion = () => {
+        setQuestions((prev) => [
+            ...prev,
+            {
+                id: `q_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                label: "",
+                type: "text",
+                required: false,
+                options: [],
+            },
+        ]);
+    };
+
+    const removeQuestion = (id: string) => {
+        setQuestions((prev) => prev.filter((q) => q.id !== id));
+    };
+
+    const updateQuestion = (id: string, fields: Partial<any>) => {
+        setQuestions((prev) =>
+            prev.map((q) => (q.id === id ? { ...q, ...fields } : q))
         );
+    };
 
     async function handleUpdateEvent(
         formData: FormData
     ) {
+        formData.append("custom_questions", JSON.stringify(questions));
         await updateEvent(
             event.id,
             formData
@@ -327,6 +356,115 @@ export function EditEventForm({
                      }
                  />
              </div>
+
+            {/* Custom Registration Questions Builder */}
+            <div className="rounded-2xl border p-6 bg-card space-y-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h3 className="text-lg font-bold text-foreground">Custom Registration Questions</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">Define additional questions for attendees during registration.</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={addQuestion}
+                        className="inline-flex items-center gap-1 bg-black text-white hover:bg-black/90 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
+                    >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add Question
+                    </button>
+                </div>
+
+                {questions.length === 0 ? (
+                    <div className="rounded-xl border border-dashed p-6 text-center text-xs text-muted-foreground">
+                        No custom questions. Attendees will register with Name & Email only.
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {questions.map((q, idx) => (
+                            <div key={q.id} className="relative rounded-xl border p-4 bg-background/50 space-y-4 shadow-2xs">
+                                <div className="absolute right-3 top-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => removeQuestion(q.id)}
+                                        className="text-muted-foreground hover:text-red-500 p-1.5 rounded-lg hover:bg-muted/50 transition cursor-pointer"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
+                                </div>
+
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    {/* Label Input */}
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Question {idx + 1} Label</Label>
+                                        <Input
+                                            type="text"
+                                            placeholder="e.g., T-Shirt Size, Dietary Needs..."
+                                            value={q.label}
+                                            onChange={(e) => updateQuestion(q.id, { label: e.target.value })}
+                                            required
+                                            className="h-9 rounded-xl"
+                                        />
+                                    </div>
+
+                                    {/* Type Selector */}
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Input Type</Label>
+                                        <div className="relative">
+                                            <select
+                                                value={q.type}
+                                                onChange={(e) => updateQuestion(q.id, { type: e.target.value })}
+                                                className="w-full bg-transparent border rounded-xl text-sm font-semibold pr-8 pl-3 py-1.5 cursor-pointer text-foreground appearance-none h-9 border-input focus:ring-0 focus:outline-none"
+                                                style={{ backgroundImage: 'url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3E%3Cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'m6 8 4 4 4-4\'/%3E%3C/svg%3E")', backgroundPosition: 'right 10px center', backgroundSize: '16px', backgroundRepeat: 'no-repeat' }}
+                                            >
+                                                <option value="text">Short Text</option>
+                                                <option value="select">Dropdown Menu</option>
+                                                <option value="checkbox">Checkbox Switch</option>
+                                                <option value="number">Number Field</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Conditionally Render Options for Select dropdowns */}
+                                {q.type === "select" && (
+                                    <div className="space-y-1.5 pl-3 border-l-2 border-primary/20">
+                                        <Label className="text-xs font-bold text-muted-foreground">Dropdown Options (Comma Separated)</Label>
+                                        <Input
+                                            type="text"
+                                            placeholder="Small, Medium, Large"
+                                            value={q.options?.join(", ") || ""}
+                                            onChange={(e) =>
+                                                updateQuestion(q.id, {
+                                                    options: e.target.value
+                                                        .split(",")
+                                                        .map((s) => s.trim())
+                                                        .filter(Boolean),
+                                                })
+                                            }
+                                            required
+                                            className="h-8 text-xs rounded-xl"
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Required Checkbox */}
+                                <div className="flex items-center space-x-2 pt-1">
+                                    <input
+                                        type="checkbox"
+                                        id={`req_${q.id}`}
+                                        checked={q.required}
+                                        onChange={(e) => updateQuestion(q.id, { required: e.target.checked })}
+                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                                    />
+                                    <Label htmlFor={`req_${q.id}`} className="text-xs font-semibold cursor-pointer">
+                                        This question is required
+                                    </Label>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
 
             <SubmitButton />
         </form>

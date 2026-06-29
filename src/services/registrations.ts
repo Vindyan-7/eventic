@@ -3,7 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 
 export async function registerForEvent(
-    eventId: string
+    eventId: string,
+    customAnswers?: Record<string, string>
 ) {
     const supabase =
         await createClient();
@@ -87,6 +88,7 @@ export async function registerForEvent(
             .insert({
                 event_id: eventId,
                 user_id: user.id,
+                custom_answers: customAnswers || {},
             })
             .select("id")
             .single();

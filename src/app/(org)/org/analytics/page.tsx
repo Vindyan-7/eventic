@@ -13,6 +13,14 @@ import {
     CheckCircle2,
 } from "lucide-react";
 
+import {
+    RegistrationTrendChart,
+    CategoryDoughnutChart,
+    RegistrationHeatmap,
+    CheckInFlowChart,
+    RegistrationSourceChart,
+} from "@/components/analytics/analytics-charts";
+
 export default async function OrgAnalyticsPage() {
     await requireOrgAdmin("/org/analytics");
 
@@ -105,6 +113,68 @@ export default async function OrgAnalyticsPage() {
                         value={analytics.completedCount}
                         icon={CheckCircle2}
                     />
+                </div>
+            </div>
+
+            {/* Live Day-of-Event Dashboard Section */}
+            <div className="rounded-3xl border border-dashed border-border/80 bg-card p-6 space-y-6">
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                        <h2 className="text-xl font-bold text-foreground">Live Event Dashboard</h2>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Real-time attendance tracking and check-in velocity for active events.</p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                    <div className="rounded-2xl border p-5 bg-background space-y-3">
+                        <div className="flex justify-between items-center text-xs text-muted-foreground font-semibold uppercase tracking-wider">
+                            <span>Live Attendance</span>
+                            <span className="font-bold text-foreground">{analytics.totalCheckIns} / {analytics.totalRegistrations}</span>
+                        </div>
+                        <div className="text-3xl font-extrabold">{analytics.attendanceRate}%</div>
+                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                            <div
+                                className="h-full bg-emerald-500 transition-all duration-500"
+                                style={{ width: `${analytics.attendanceRate}%` }}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl border p-5 bg-background space-y-1">
+                        <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Average Check-in Speed</p>
+                        <p className="text-3xl font-extrabold text-blue-600 dark:text-blue-400 mt-2">{analytics.checkInSpeed > 0 ? `${analytics.checkInSpeed}s` : "N/A"}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Average throughput time per volunteer scan.</p>
+                    </div>
+
+                    <div className="rounded-2xl border p-5 bg-background space-y-2">
+                        <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Revenue Breakdown</p>
+                        <div className="grid grid-cols-3 gap-2 mt-1">
+                            <div>
+                                <div className="text-[10px] text-muted-foreground">Collected</div>
+                                <div className="text-sm font-extrabold text-foreground">₹{analytics.totalRevenue.toLocaleString()}</div>
+                            </div>
+                            <div>
+                                <div className="text-[10px] text-muted-foreground">Pending</div>
+                                <div className="text-sm font-extrabold text-yellow-600">₹0</div>
+                            </div>
+                            <div>
+                                <div className="text-[10px] text-muted-foreground">Refunded</div>
+                                <div className="text-sm font-extrabold text-red-600">₹0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Analytics Visual Charts Grid */}
+            <div className="grid gap-6 md:grid-cols-2">
+                <RegistrationTrendChart data={analytics.registrationTrend} />
+                <CategoryDoughnutChart data={analytics.categoryBreakdown} />
+                <RegistrationHeatmap data={analytics.registrationHeatmap} />
+                <CheckInFlowChart data={analytics.checkInFlow} />
+                <div className="md:col-span-2">
+                    <RegistrationSourceChart data={analytics.registrationSources} />
                 </div>
             </div>
 
