@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, useRef } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { scanTicket } from "@/services/scan-ticket";
 import { scanAndCheckIn } from "@/services/scan-and-checkin";
@@ -28,6 +28,7 @@ export function QRScanner({
     } | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [pending, startTransition] = useTransition();
+    const isProcessingRef = useRef(false);
 
     // 1. Load persisted mode from localStorage on mount (hydration safe)
     useEffect(() => {
@@ -46,10 +47,16 @@ export function QRScanner({
         setError("");
         setStatus("Camera active. Scan a ticket.");
         setIsProcessing(false);
+        isProcessingRef.current = false;
     };
 
     // 2. Scanner execution hook
     useEffect(() => {
+        // If an attendee or error is being displayed, don't start the camera stream.
+        if (attendee || error) {
+            return;
+        }
+
         let scanner: Html5Qrcode | null = null;
 
         async function startScanner() {
@@ -81,7 +88,8 @@ export function QRScanner({
                     },
                     (decodedText) => {
                         // Prevent multi-triggering
-                        if (isProcessing) return;
+                        if (isProcessingRef.current) return;
+                        isProcessingRef.current = true;
                         setIsProcessing(true);
                         setStatus("QR Code detected");
 
@@ -101,6 +109,7 @@ export function QRScanner({
                                     setError("");
                                     setStatus("Camera active. Scan a ticket.");
                                     setIsProcessing(false);
+                                    isProcessingRef.current = false;
                                 }, 2500);
                                 return;
                             }
@@ -121,11 +130,13 @@ export function QRScanner({
                                     setError("");
                                     setStatus("Camera active. Scan a ticket.");
                                     setIsProcessing(false);
+                                    isProcessingRef.current = false;
                                 }, 2000);
                             } else {
                                 // In verify mode for unchecked tickets, let processing trigger reset after 2 seconds to allow next scan, but keep attendee on-screen
                                 setTimeout(() => {
                                     setIsProcessing(false);
+                                    isProcessingRef.current = false;
                                 }, 2000);
                             }
                         });
@@ -158,7 +169,7 @@ export function QRScanner({
             }
             cleanup();
         };
-    }, [eventId, scannerMode, isProcessing]);
+    }, [eventId, scannerMode, attendee, error]);
 
     const handleManualReset = () => {
         setAttendee(null);
@@ -166,6 +177,7 @@ export function QRScanner({
         setError("");
         setStatus("Camera active. Scan a ticket.");
         setIsProcessing(false);
+        isProcessingRef.current = false;
     };
 
     return (
@@ -220,35 +232,84 @@ export function QRScanner({
                 <span className="h-px bg-border/60 flex-grow" />
             </div>
 
-            {/* QR Stream Reader viewport */}
-            <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-black aspect-square max-w-md">
-                <div id="qr-reader" className="w-full h-full object-cover" />
-                {/* Visual Scanner HUD guide */}
-                <div className="absolute inset-0 border-[40px] border-black/40 pointer-events-none flex items-center justify-center">
-                    <div className="w-[180px] h-[180px] border-2 border-dashed border-primary/60 rounded-xl relative">
-                        <div className="absolute -top-1.5 -left-1.5 w-4 h-4 border-t-4 border-l-4 border-primary" />
-                        <div className="absolute -top-1.5 -right-1.5 w-4 h-4 border-t-4 border-r-4 border-primary" />
-                        <div className="absolute -bottom-1.5 -left-1.5 w-4 h-4 border-b-4 border-l-4 border-primary" />
-                        <div className="absolute -bottom-1.5 -right-1.5 w-4 h-4 border-b-4 border-r-4 border-primary" />
+            {/* QR Stream Reader viewport OR Result View */}
+            <div className={`relative overflow-hidden rounded-3xl border border-border/80 bg-background max-w-md w-full transition-all duration-300 ${(!attendee && !error) ? "aspect-square bg-black shadow-inner" : "min-h-[350px] h-auto p-1 shadow-md"}`}>
+                {(!attendee && !error) ? (
+                    <>
+                        <div id="qr-reader" className="w-full h-full object-cover" />
+                        {/* Visual Scanner HUD guide */}
+                        <div className="absolute inset-0 border-[40px] border-black/40 pointer-events-none flex items-center justify-center">
+                            <div className="w-[180px] h-[180px] border-2 border-dashed border-primary/60 rounded-xl relative">
+                                <div className="absolute -top-1.5 -left-1.5 w-4 h-4 border-t-4 border-l-4 border-primary" />
+                                <div className="absolute -top-1.5 -right-1.5 w-4 h-4 border-t-4 border-r-4 border-primary" />
+                                <div className="absolute -bottom-1.5 -left-1.5 w-4 h-4 border-b-4 border-l-4 border-primary" />
+                                <div className="absolute -bottom-1.5 -right-1.5 w-4 h-4 border-b-4 border-r-4 border-primary" />
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <div className="w-full h-full p-2 animate-in fade-in duration-300 flex flex-col justify-center">
+                        {attendee && scanResult && (
+                            <ScanResultCard
+                                attendee={attendee}
+                                checkedIn={scanResult.checkedIn}
+                                checkedInAt={scanResult.checkedInAt}
+                                alreadyCheckedIn={scanResult.alreadyCheckedIn}
+                                onCheckInSuccess={(time) => {
+                                    setScanResult((prev: any) => {
+                                        if (!prev) return null;
+                                        return {
+                                            ...prev,
+                                            checkedIn: true,
+                                            checkedInAt: time,
+                                            alreadyCheckedIn: false,
+                                        };
+                                    });
+                                    setStatus("Check-in successful");
+                                    // Auto reset scanner state after 2 seconds
+                                    setTimeout(() => {
+                                        setAttendee(null);
+                                        setScanResult(null);
+                                        setError("");
+                                        isProcessingRef.current = false;
+                                        setStatus("Camera active. Scan a ticket.");
+                                    }, 2000);
+                                }}
+                            />
+                        )}
+
+                        {error && (
+                            <div className="rounded-2xl border border-red-500/20 bg-red-50 dark:bg-red-950/20 p-6 text-red-600 dark:text-red-400 flex flex-col items-center text-center gap-3">
+                                <div className="mx-auto w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center text-red-600">
+                                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="font-extrabold text-lg">Scanner Error</p>
+                                    <p className="text-sm opacity-90">{error}</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                </div>
+                )}
             </div>
 
             {/* Status Indicator */}
-            <div className="rounded-2xl border p-4 bg-card flex items-center justify-between">
-                <div className="space-y-0.5">
+            <div className="rounded-2xl border p-5 bg-card flex items-center justify-between shadow-xs min-h-[72px]">
+                <div className="space-y-1">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                         <Camera className="h-3 w-3" /> Status
                     </p>
-                    <p className="text-sm font-semibold">{status}</p>
+                    <p className="text-sm font-bold text-foreground leading-snug">{status}</p>
                 </div>
                 {(attendee || error) && (
                     <button
                         onClick={handleManualReset}
-                        className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+                        className="p-2.5 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer border bg-background"
                         title="Reset Scanner"
                     >
-                        <RefreshCw className="h-4 w-4" />
+                        <RefreshCw className="h-4.5 w-4.5" />
                     </button>
                 )}
             </div>
@@ -257,55 +318,10 @@ export function QRScanner({
             {scannerMode === "verify" && (attendee || error) && (
                 <button
                     onClick={handleManualReset}
-                    className="w-full rounded-2xl bg-black text-white px-6 py-3.5 font-bold hover:bg-black/90 transition-colors shadow-sm cursor-pointer"
+                    className="w-full rounded-2xl bg-black text-white px-6 py-3.5 font-bold hover:bg-black/90 transition-colors shadow-md cursor-pointer"
                 >
                     Scan Next Ticket
                 </button>
-            )}
-
-            {/* Success ScanResultCard */}
-            {attendee && scanResult && (
-                <ScanResultCard
-                    attendee={attendee}
-                    checkedIn={scanResult.checkedIn}
-                    checkedInAt={scanResult.checkedInAt}
-                    alreadyCheckedIn={scanResult.alreadyCheckedIn}
-                    onCheckInSuccess={(time) => {
-                        setScanResult((prev: any) => {
-                            if (!prev) return null;
-                            return {
-                                ...prev,
-                                checkedIn: true,
-                                checkedInAt: time,
-                                alreadyCheckedIn: false,
-                            };
-                        });
-                        setStatus("Check-in successful");
-                        // Auto reset scanner state after 2 seconds
-                        setTimeout(() => {
-                            setAttendee(null);
-                            setScanResult(null);
-                            setError("");
-                            setStatus("Camera active. Scan a ticket.");
-                            setIsProcessing(false);
-                        }, 2000);
-                    }}
-                />
-            )}
-
-            {/* Red Error status block */}
-            {error && (
-                <div className="rounded-2xl border border-red-500/20 bg-red-50 dark:bg-red-950/20 p-4 text-red-600 dark:text-red-400 flex items-start gap-3">
-                    <div className="mt-0.5 shrink-0">
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                    <div className="space-y-1">
-                        <p className="font-bold text-sm">Scanner Error</p>
-                        <p className="text-xs opacity-90">{error}</p>
-                    </div>
-                </div>
             )}
         </div>
     );
