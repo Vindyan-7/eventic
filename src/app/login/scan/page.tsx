@@ -17,8 +17,8 @@ export default function ScanLoginPage() {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!code.trim().toUpperCase().startsWith("SCAN-")) {
-            toast.error("Code must start with 'SCAN-' followed by 6 digits");
+        if (!/^\d{6}$/.test(code.trim())) {
+            toast.error("Code must be a 6-digit number");
             return;
         }
 
@@ -49,7 +49,7 @@ export default function ScanLoginPage() {
                     </div>
                     <h1 className="text-2xl font-extrabold text-foreground">Staff Scanner Login</h1>
                     <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-                        Enter the SCAN code shared by the event organizer to start scanning tickets.
+                        Enter the 6-digit access code shared by the event organizer to start scanning tickets.
                     </p>
                 </div>
 
@@ -62,7 +62,7 @@ export default function ScanLoginPage() {
                         <Input
                             id="code"
                             type="text"
-                            placeholder="SCAN-XXXXXX"
+                            placeholder="123456"
                             value={code}
                             onChange={(e) => setCode(e.target.value)}
                             required
