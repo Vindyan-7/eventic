@@ -61,6 +61,16 @@ export async function createEvent(formData: FormData) {
     const category = formData.get("category") as string;
     const status = (formData.get("status") as string) || "draft";
 
+    const custom_questions_raw = formData.get("custom_questions") as string;
+    let custom_questions = [];
+    if (custom_questions_raw) {
+        try {
+            custom_questions = JSON.parse(custom_questions_raw);
+        } catch (e) {
+            console.error("Failed to parse custom questions", e);
+        }
+    }
+
     const slug = generateSlug(title);
 
     let bannerUrl: string | null = null;
@@ -85,6 +95,7 @@ export async function createEvent(formData: FormData) {
             banner_url: bannerUrl,
             category,
             status,
+            custom_questions,
         });
 
     if (error) {

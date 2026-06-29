@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LoginForm } from "@/components/forms/login-form";
+import Link from "next/link";
 
 interface Props {
     searchParams: Promise<{
@@ -24,6 +25,18 @@ export default async function LoginPage({ searchParams }: Props) {
             </h1>
 
             <LoginForm />
+
+            <div className="mt-8 pt-6 border-t text-center">
+                <p className="text-muted-foreground text-sm mb-2">
+                    Are you Event Staff or a Volunteer?
+                </p>
+                <Link
+                    href="/login/scan"
+                    className="text-sm font-medium hover:underline text-primary"
+                >
+                    Login with Scanner Code
+                </Link>
+            </div>
         </div>
     );
 }

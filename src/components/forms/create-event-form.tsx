@@ -11,31 +11,20 @@ import { Loader2 } from "lucide-react";
 import { useFormStatus } from "react-dom";
 import { BannerUpload } from "./banner-upload";
 
+import { Plus, Trash2, HelpCircle } from "lucide-react";
+
 function FormButtons() {
     const { pending } = useFormStatus();
 
     return (
         <div className="flex flex-col gap-3 sm:flex-row">
-            <input
-                type="hidden"
-                name="status"
-                value="published"
-                id="event-status"
-            />
-
             <Button
                 type="submit"
+                name="status"
+                value="draft"
                 variant="outline"
                 className="flex-1"
                 disabled={pending}
-                onClick={() => {
-                    const input =
-                        document.getElementById(
-                            "event-status"
-                        ) as HTMLInputElement;
-
-                    input.value = "draft";
-                }}
             >
                 {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Save Draft
@@ -43,16 +32,10 @@ function FormButtons() {
 
             <Button
                 type="submit"
+                name="status"
+                value="published"
                 className="flex-1"
                 disabled={pending}
-                onClick={() => {
-                    const input =
-                        document.getElementById(
-                            "event-status"
-                        ) as HTMLInputElement;
-
-                    input.value = "published";
-                }}
             >
                 {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Publish Event
@@ -64,8 +47,33 @@ function FormButtons() {
 export function CreateEventForm() {
     const [file, setFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
+    const [questions, setQuestions] = useState<any[]>([]);
+
+    const addQuestion = () => {
+        setQuestions((prev) => [
+            ...prev,
+            {
+                id: `q_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                label: "",
+                type: "text",
+                required: false,
+                options: [],
+            },
+        ]);
+    };
+
+    const removeQuestion = (id: string) => {
+        setQuestions((prev) => prev.filter((q) => q.id !== id));
+    };
+
+    const updateQuestion = (id: string, fields: Partial<any>) => {
+        setQuestions((prev) =>
+            prev.map((q) => (q.id === id ? { ...q, ...fields } : q))
+        );
+    };
 
     async function handleCreateEvent(formData: FormData) {
+        formData.append("custom_questions", JSON.stringify(questions));
         await createEvent(formData);
     }
 
@@ -248,6 +256,116 @@ export function CreateEventForm() {
                     disabled
                     className="cursor-not-allowed"
                 />
+            </div>
+
+            <div className="pt-6 border-t space-y-6">
+                <div>
+                    <h3 className="text-lg font-medium flex items-center gap-2">
+                        Custom Registration Questions
+                        <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        Ask attendees questions during registration (e.g. T-Shirt Size, Food Preference).
+                    </p>
+                </div>
+
+                <div className="space-y-4">
+                    {questions.map((q, index) => (
+                        <div
+                            key={q.id}
+                            className="p-4 border rounded-xl space-y-4 bg-muted/20 relative group"
+                        >
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => removeQuestion(q.id)}
+                            >
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="space-y-2">
+                                    <Label>Question Label</Label>
+                                    <Input
+                                        value={q.label}
+                                        onChange={(e) =>
+                                            updateQuestion(q.id, {
+                                                label: e.target.value,
+                                            })
+                                        }
+                                        placeholder="e.g. T-Shirt Size"
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Answer Type</Label>
+                                    <select
+                                        className="w-full rounded-xl border p-2 bg-background"
+                                        value={q.type}
+                                        onChange={(e) =>
+                                            updateQuestion(q.id, {
+                                                type: e.target.value,
+                                                options: e.target.value === "dropdown" || e.target.value === "checkbox" ? [] : q.options,
+                                            })
+                                        }
+                                    >
+                                        <option value="text">Short Text</option>
+                                        <option value="textarea">Long Text</option>
+                                        <option value="number">Number</option>
+                                        <option value="dropdown">Dropdown Options</option>
+                                        <option value="checkbox">Multiple Choice (Checkboxes)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {(q.type === "dropdown" || q.type === "checkbox") && (
+                                <div className="space-y-2">
+                                    <Label>Options (comma separated)</Label>
+                                    <Input
+                                        value={q.options?.join(", ") || ""}
+                                        onChange={(e) =>
+                                            updateQuestion(q.id, {
+                                                options: e.target.value
+                                                    .split(",")
+                                                    .map((s) => s.trim())
+                                                    .filter(Boolean),
+                                            })
+                                        }
+                                        placeholder="Small, Medium, Large, XL"
+                                        required
+                                    />
+                                </div>
+                            )}
+
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id={`required-${q.id}`}
+                                    checked={q.required}
+                                    onCheckedChange={(checked) =>
+                                        updateQuestion(q.id, {
+                                            required: !!checked,
+                                        })
+                                    }
+                                />
+                                <Label htmlFor={`required-${q.id}`}>
+                                    Required question
+                                </Label>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addQuestion}
+                    className="w-full"
+                >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Question
+                </Button>
             </div>
 
             <FormButtons />
