@@ -290,40 +290,43 @@ export function EditEventForm({
                 </select>
             </div>
 
-            <div className="flex items-center gap-2">
-                <input
-                    type="checkbox"
-                    id="is_paid"
-                    name="is_paid"
-                    defaultChecked={
-                        event.is_paid
-                    }
-                    className="h-4 w-4"
-                />
+            <div className="flex items-center gap-2 opacity-60">
+                 <input
+                     type="checkbox"
+                     id="is_paid"
+                     name="is_paid"
+                     disabled
+                     defaultChecked={
+                         event.is_paid
+                     }
+                     className="h-4 w-4 cursor-not-allowed"
+                 />
 
-                <Label
-                    htmlFor="is_paid"
-                    className="cursor-pointer"
-                >
-                    This is a paid event
-                </Label>
-            </div>
+                 <Label
+                     htmlFor="is_paid"
+                     className="cursor-not-allowed flex items-center gap-1.5"
+                 >
+                     This is a paid event <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20">Coming Soon</span>
+                 </Label>
+             </div>
 
-            <div className="space-y-2">
-                <Label htmlFor="ticket_price">
-                    Ticket Price
-                </Label>
+             <div className="space-y-2 opacity-60">
+                 <Label htmlFor="ticket_price" className="cursor-not-allowed">
+                     Ticket Price
+                 </Label>
 
-                <Input
-                    id="ticket_price"
-                    name="ticket_price"
-                    type="number"
-                    step="0.01"
-                    defaultValue={
-                        event.ticket_price
-                    }
-                />
-            </div>
+                 <Input
+                     id="ticket_price"
+                     name="ticket_price"
+                     type="number"
+                     disabled
+                     className="cursor-not-allowed"
+                     step="0.01"
+                     defaultValue={
+                         event.ticket_price
+                     }
+                 />
+             </div>
 
             <SubmitButton />
         </form>

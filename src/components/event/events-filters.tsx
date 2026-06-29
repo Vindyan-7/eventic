@@ -198,18 +198,25 @@ export function EventsFilter({
 
             <div className="flex gap-3">
 
-                {["all", "free", "paid"].map((p) => (
-                    <button
-                        key={p}
-                        onClick={() => setPriceFilter(p)}
-                        className={`rounded-lg border px-4 py-2 text-sm transition ${priceFilter === p
-                            ? "bg-black text-white"
-                            : "hover:bg-muted"
+                {["all", "free", "paid"].map((p) => {
+                    const isComingSoon = p === "paid";
+                    return (
+                        <button
+                            key={p}
+                            disabled={isComingSoon}
+                            onClick={() => setPriceFilter(p)}
+                            className={`rounded-lg border px-4 py-2 text-sm transition ${
+                                priceFilter === p
+                                    ? "bg-black text-white"
+                                    : isComingSoon
+                                    ? "opacity-50 cursor-not-allowed text-muted-foreground bg-muted/25"
+                                    : "hover:bg-muted"
                             }`}
-                    >
-                        {p.charAt(0).toUpperCase() + p.slice(1)}
-                    </button>
-                ))}
+                        >
+                            {isComingSoon ? "Paid (Coming Soon)" : p.charAt(0).toUpperCase() + p.slice(1)}
+                        </button>
+                    );
+                })}
 
             </div>
 
