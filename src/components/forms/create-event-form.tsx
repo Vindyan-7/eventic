@@ -58,6 +58,7 @@ export function CreateEventForm() {
                 type: "text",
                 required: false,
                 options: [],
+                optionsText: "",
             },
         ]);
     };
@@ -73,7 +74,8 @@ export function CreateEventForm() {
     };
 
     async function handleCreateEvent(formData: FormData) {
-        formData.append("custom_questions", JSON.stringify(questions));
+        const cleanedQuestions = questions.map(({ optionsText, ...q }) => q);
+        formData.append("custom_questions", JSON.stringify(cleanedQuestions));
         await createEvent(formData);
     }
 
@@ -258,114 +260,115 @@ export function CreateEventForm() {
                 />
             </div>
 
-            <div className="pt-6 border-t space-y-6">
-                <div>
-                    <h3 className="text-lg font-medium flex items-center gap-2">
-                        Custom Registration Questions
-                        <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                    </h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Ask attendees questions during registration (e.g. T-Shirt Size, Food Preference).
-                    </p>
+            {/* Custom Registration Questions Builder */}
+            <div className="rounded-2xl border p-6 bg-card space-y-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h3 className="text-lg font-bold text-foreground">Custom Registration Questions</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">Define additional questions for attendees during registration.</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={addQuestion}
+                        className="inline-flex items-center gap-1 bg-black text-white hover:bg-black/90 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
+                    >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add Question
+                    </button>
                 </div>
 
-                <div className="space-y-4">
-                    {questions.map((q, index) => (
-                        <div
-                            key={q.id}
-                            className="p-4 border rounded-xl space-y-4 bg-muted/20 relative group"
-                        >
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() => removeQuestion(q.id)}
-                            >
-                                <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
-
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label>Question Label</Label>
-                                    <Input
-                                        value={q.label}
-                                        onChange={(e) =>
-                                            updateQuestion(q.id, {
-                                                label: e.target.value,
-                                            })
-                                        }
-                                        placeholder="e.g. T-Shirt Size"
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Answer Type</Label>
-                                    <select
-                                        className="w-full rounded-xl border p-2 bg-background"
-                                        value={q.type}
-                                        onChange={(e) =>
-                                            updateQuestion(q.id, {
-                                                type: e.target.value,
-                                                options: e.target.value === "dropdown" || e.target.value === "checkbox" ? [] : q.options,
-                                            })
-                                        }
+                {questions.length === 0 ? (
+                    <div className="rounded-xl border border-dashed p-6 text-center text-xs text-muted-foreground">
+                        No custom questions. Attendees will register with Name & Email only.
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {questions.map((q, idx) => (
+                            <div key={q.id} className="relative rounded-xl border p-4 bg-background/50 space-y-4 shadow-2xs">
+                                <div className="absolute right-3 top-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => removeQuestion(q.id)}
+                                        className="text-muted-foreground hover:text-red-500 p-1.5 rounded-lg hover:bg-muted/50 transition cursor-pointer"
                                     >
-                                        <option value="text">Short Text</option>
-                                        <option value="textarea">Long Text</option>
-                                        <option value="number">Number</option>
-                                        <option value="dropdown">Dropdown Options</option>
-                                        <option value="checkbox">Multiple Choice (Checkboxes)</option>
-                                    </select>
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
                                 </div>
-                            </div>
 
-                            {(q.type === "dropdown" || q.type === "checkbox") && (
-                                <div className="space-y-2">
-                                    <Label>Options (comma separated)</Label>
-                                    <Input
-                                        value={q.options?.join(", ") || ""}
-                                        onChange={(e) =>
-                                            updateQuestion(q.id, {
-                                                options: e.target.value
-                                                    .split(",")
-                                                    .map((s) => s.trim())
-                                                    .filter(Boolean),
-                                            })
-                                        }
-                                        placeholder="Small, Medium, Large, XL"
-                                        required
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    {/* Label Input */}
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Question {idx + 1} Label</Label>
+                                        <Input
+                                            type="text"
+                                            placeholder="e.g., T-Shirt Size, Dietary Needs..."
+                                            value={q.label}
+                                            onChange={(e) => updateQuestion(q.id, { label: e.target.value })}
+                                            required
+                                            className="h-9 rounded-xl"
+                                        />
+                                    </div>
+
+                                    {/* Type Selector */}
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Input Type</Label>
+                                        <div className="relative">
+                                            <select
+                                                value={q.type}
+                                                onChange={(e) => updateQuestion(q.id, { type: e.target.value })}
+                                                className="w-full bg-transparent border rounded-xl text-sm font-semibold pr-8 pl-3 py-1.5 cursor-pointer text-foreground appearance-none h-9 border-input focus:ring-0 focus:outline-none"
+                                                style={{ backgroundImage: 'url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3E%3Cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'m6 8 4 4 4-4\'/%3E%3C/svg%3E")', backgroundPosition: 'right 10px center', backgroundSize: '16px', backgroundRepeat: 'no-repeat' }}
+                                            >
+                                                <option value="text">Short Text</option>
+                                                <option value="select">Dropdown Menu</option>
+                                                <option value="checkbox">Checkbox Switch</option>
+                                                <option value="number">Number Field</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Conditionally Render Options for Select dropdowns */}
+                                {q.type === "select" && (
+                                    <div className="space-y-1.5 pl-3 border-l-2 border-primary/20">
+                                        <Label className="text-xs font-bold text-muted-foreground">Dropdown Options (Comma Separated)</Label>
+                                        <Input
+                                            type="text"
+                                            placeholder="Small, Medium, Large"
+                                            value={q.optionsText ?? ""}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                updateQuestion(q.id, {
+                                                    optionsText: val,
+                                                    options: val
+                                                        .split(",")
+                                                        .map((s) => s.trim())
+                                                        .filter(Boolean),
+                                                });
+                                            }}
+                                            required
+                                            className="h-8 text-xs rounded-xl"
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Required Checkbox */}
+                                <div className="flex items-center space-x-2 pt-1">
+                                    <input
+                                        type="checkbox"
+                                        id={`req_${q.id}`}
+                                        checked={q.required}
+                                        onChange={(e) => updateQuestion(q.id, { required: e.target.checked })}
+                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
                                     />
+                                    <Label htmlFor={`req_${q.id}`} className="text-xs font-semibold cursor-pointer">
+                                        This question is required
+                                    </Label>
                                 </div>
-                            )}
-
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id={`required-${q.id}`}
-                                    checked={q.required}
-                                    onCheckedChange={(checked) =>
-                                        updateQuestion(q.id, {
-                                            required: !!checked,
-                                        })
-                                    }
-                                />
-                                <Label htmlFor={`required-${q.id}`}>
-                                    Required question
-                                </Label>
                             </div>
-                        </div>
-                    ))}
-                </div>
-
-                <Button
-                    type="button"
-                    variant="outline"
-                    onClick={addQuestion}
-                    className="w-full"
-                >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Question
-                </Button>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <FormButtons />

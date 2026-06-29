@@ -17,6 +17,7 @@ export interface OrgEventDetail {
     ticket_price: number;
     category: string | null;
     status: "draft" | "published" | "completed" | "cancelled";
+    custom_questions: any;
     created_at: string;
     updated_at: string;
     registration_count: number;
@@ -72,6 +73,7 @@ export async function getOrganizationEvent(
             ticket_price,
             category,
             status,
+            custom_questions,
             created_at,
             updated_at,
             event_registrations (

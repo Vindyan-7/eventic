@@ -121,6 +121,8 @@ export default async function EditEventPage({
                             event.status,
                         category:
                             event.category,
+                        custom_questions:
+                            event.custom_questions,
                     }}
 
                 />

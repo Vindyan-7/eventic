@@ -55,9 +55,13 @@ export function EditEventForm({
     const [preview, setPreview] = useState<string | null>(
         event.banner_url
     );
-    const [questions, setQuestions] = useState<any[]>(
-        Array.isArray(event.custom_questions) ? event.custom_questions : []
-    );
+    const [questions, setQuestions] = useState<any[]>(() => {
+        const rawQs = Array.isArray(event.custom_questions) ? event.custom_questions : [];
+        return rawQs.map(q => ({
+            ...q,
+            optionsText: q.options ? q.options.join(", ") : ""
+        }));
+    });
 
     const addQuestion = () => {
         setQuestions((prev) => [
@@ -68,6 +72,7 @@ export function EditEventForm({
                 type: "text",
                 required: false,
                 options: [],
+                optionsText: "",
             },
         ]);
     };
@@ -85,7 +90,8 @@ export function EditEventForm({
     async function handleUpdateEvent(
         formData: FormData
     ) {
-        formData.append("custom_questions", JSON.stringify(questions));
+        const cleanedQuestions = questions.map(({ optionsText, ...q }) => q);
+        formData.append("custom_questions", JSON.stringify(cleanedQuestions));
         await updateEvent(
             event.id,
             formData
@@ -432,15 +438,17 @@ export function EditEventForm({
                                         <Input
                                             type="text"
                                             placeholder="Small, Medium, Large"
-                                            value={q.options?.join(", ") || ""}
-                                            onChange={(e) =>
+                                            value={q.optionsText ?? ""}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
                                                 updateQuestion(q.id, {
-                                                    options: e.target.value
+                                                    optionsText: val,
+                                                    options: val
                                                         .split(",")
                                                         .map((s) => s.trim())
                                                         .filter(Boolean),
-                                                })
-                                            }
+                                                });
+                                            }}
                                             required
                                             className="h-8 text-xs rounded-xl"
                                         />
