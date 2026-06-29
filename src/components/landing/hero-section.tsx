@@ -80,7 +80,7 @@ export function HeroSection({ user }: HeroSectionProps) {
                         variants={fadeInUp}
                         className="text-lg md:text-xl text-neutral-400 max-w-2xl mx-auto leading-relaxed"
                     >
-                        Join thousands of students, makers, and creators. Discover hackathons, technical symposia, cultural fests, and local meetups.
+                        Discover workshops, hackathons, and campus events happening around your college or community. Find nearby events and register in seconds.
                     </motion.p>
 
                     <motion.div 
@@ -93,7 +93,7 @@ export function HeroSection({ user }: HeroSectionProps) {
                             className="h-14 px-10 rounded-2xl text-base font-extrabold gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 border-0 shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-all duration-300 w-full sm:w-auto text-white cursor-pointer"
                         >
                             <Link href="/events">
-                                Explore Events <ArrowRight className="h-5 w-5" />
+                                Find Nearby Events <ArrowRight className="h-5 w-5" />
                             </Link>
                         </Button>
                         

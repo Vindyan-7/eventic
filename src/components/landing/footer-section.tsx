@@ -23,7 +23,7 @@ export function FooterSection() {
                     <div className="space-y-4">
                         <h4 className="font-extrabold text-sm uppercase tracking-wider text-foreground">Platform</h4>
                         <ul className="space-y-2.5 text-sm text-muted-foreground">
-                            <li><Link href="/events" className="hover:text-violet-500 transition-colors">Find Events</Link></li>
+                            <li><Link href="/events" className="hover:text-violet-500 transition-colors">Find Nearby Events</Link></li>
                             <li><Link href={ROUTES.AUTH.LOGIN} className="hover:text-violet-500 transition-colors">Sign In</Link></li>
                             <li><Link href={ROUTES.AUTH.REGISTER} className="hover:text-violet-500 transition-colors">Host an Event</Link></li>
                         </ul>
