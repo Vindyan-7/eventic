@@ -1,6 +1,6 @@
 import { requireOrgAdminOrScanner } from "@/lib/org-auth";
 import { QRScanner } from "@/components/event/qr-scanner";
-import { getOrganizationEvent } from "@/services/event-management";
+import { getOrganizationEvent, getEventForScanner } from "@/services/event-management";
 import { notFound } from "next/navigation";
 import { ScanCodeGenerator } from "@/components/event/scan-code-generator";
 
@@ -16,20 +16,19 @@ export default async function ScanPage({
 
     const { isScanner } = await requireOrgAdminOrScanner(eventId);
 
-    const result =
-        await getOrganizationEvent(
-            eventId
-        );
-
-    if (
-        result.error ||
-        !result.data
-    ) {
-        notFound();
+    let event;
+    if (isScanner) {
+        event = await getEventForScanner(eventId);
+    } else {
+        const result = await getOrganizationEvent(eventId);
+        if (!result.error && result.data) {
+            event = result.data;
+        }
     }
 
-    const event =
-        result.data;
+    if (!event) {
+        notFound();
+    }
 
     return (
         <div className="max-w-6xl mx-auto space-y-8">

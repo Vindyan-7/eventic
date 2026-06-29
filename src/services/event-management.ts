@@ -142,3 +142,49 @@ export async function getOrganizationEvent(
         error: null,
     };
 }
+
+export async function getEventForScanner(eventId: string) {
+    const supabase = await createClient();
+
+    const { data: event, error } = await supabase
+        .from("events")
+        .select(`
+            id,
+            title,
+            venue,
+            starts_at,
+            event_registrations (
+                id,
+                checked_in
+            )
+        `)
+        .eq("id", eventId)
+        .single();
+
+    if (error || !event) {
+        return null;
+    }
+
+    const registrations = (event.event_registrations as any[]) || [];
+    const registration_count = registrations.length;
+    const checked_in_count = registrations.filter((r) => r.checked_in).length;
+    const remaining_attendees = Math.max(
+        0,
+        registration_count - checked_in_count
+    );
+    const attendance_rate =
+        registration_count === 0
+            ? 0
+            : Math.round((checked_in_count / registration_count) * 100);
+
+    return {
+        id: event.id,
+        title: event.title,
+        venue: event.venue,
+        starts_at: event.starts_at,
+        registration_count,
+        checked_in_count,
+        remaining_attendees,
+        attendance_rate,
+    };
+}

@@ -1,9 +1,23 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
+import { validateScanSession } from "@/services/scan-code-actions";
 
 // Helper to verify that the current authenticated user owns the hosting organization of the event
 async function verifyEventOwnership(supabase: any, eventId: string) {
+  // 1. Check for staff scanner session cookie
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get(`scan_session_${eventId}`);
+  if (sessionCookie) {
+    const code = sessionCookie.value;
+    const isValid = await validateScanSession(eventId, code);
+    if (isValid) {
+      return { success: true };
+    }
+  }
+
+  // 2. Fall back to organization administrator checks
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return { error: "Unauthorized" };

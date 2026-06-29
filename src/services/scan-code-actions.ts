@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 // Helper to generate a random 6-digit number suffix
 function generateCodeString(): string {
@@ -151,4 +152,14 @@ export async function getActiveScanCode(eventId: string) {
     }
 
     return record;
+}
+
+export async function logoutAllScanners() {
+    const cookieStore = await cookies();
+    cookieStore.getAll().forEach((c) => {
+        if (c.name.startsWith("scan_session_")) {
+            cookieStore.delete(c.name);
+        }
+    });
+    redirect("/login/scan");
 }
