@@ -143,11 +143,14 @@ export default async function OrgDashboardPage() {
 
                     <Link
                         href="/org/payouts"
-                        className="rounded-2xl border p-6 hover:bg-muted/30 transition"
+                        className="rounded-2xl border p-6 hover:bg-muted/30 transition relative overflow-hidden"
                     >
-                        <h3 className="font-semibold">
-                            Payouts
-                        </h3>
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-semibold">
+                                Payouts
+                            </h3>
+                            <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20">Coming Soon</span>
+                        </div>
 
                         <p className="text-sm text-muted-foreground mt-2">
                             View earnings and request withdrawals.
