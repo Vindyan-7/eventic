@@ -6,7 +6,7 @@ import { cookies } from "next/headers";
 // Helper to generate a random 6-digit number suffix
 function generateCodeString(): string {
     const num = Math.floor(100000 + Math.random() * 900000);
-    return `SCAN-${num}`;
+    return `${num}`;
 }
 
 // 1. Generate a temporary scanner access code valid for 24 hours
