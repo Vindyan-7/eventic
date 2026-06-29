@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 interface DownloadTicketButtonProps {
     registrationId: string;
+    ticketNumber: string;
     eventName: string;
     orgName: string;
     venue: string;
@@ -19,6 +20,7 @@ interface DownloadTicketButtonProps {
 
 export function DownloadTicketButton({
     registrationId,
+    ticketNumber,
     eventName,
     orgName,
     venue,
@@ -195,9 +197,9 @@ export function DownloadTicketButton({
                             />
                             
                             <div className="mt-4 text-center w-full max-w-[280px]">
-                                <span className="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Registration ID</span>
+                                <span className="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Ticket Number</span>
                                 <p className="text-[11px] font-mono font-bold text-gray-700 mt-1 break-all bg-white px-3 py-1.5 rounded-lg border border-gray-100 shadow-2xs">
-                                    {registrationId}
+                                    {ticketNumber}
                                 </p>
                             </div>
                         </div>

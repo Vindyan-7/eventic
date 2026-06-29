@@ -8,6 +8,7 @@ import { ScanResultCard } from "./scan-result-card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Camera, RefreshCw } from "lucide-react";
+import { AttendeeSearch } from "./attendee-search";
 
 interface Props {
     eventId: string;
@@ -206,6 +207,17 @@ export function QRScanner({
                         </Label>
                     </div>
                 </RadioGroup>
+            </div>
+
+            {/* Quick Attendee Search */}
+            <div className="border-t border-border/60 pt-6">
+                <AttendeeSearch eventId={eventId} />
+            </div>
+
+            <div className="relative flex items-center justify-between my-2">
+                <span className="h-px bg-border/60 flex-grow" />
+                <span className="mx-4 text-xs font-bold text-muted-foreground uppercase tracking-widest">OR</span>
+                <span className="h-px bg-border/60 flex-grow" />
             </div>
 
             {/* QR Stream Reader viewport */}

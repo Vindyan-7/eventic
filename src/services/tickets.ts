@@ -27,6 +27,7 @@ export async function getTicket(
             created_at,
             checked_in,
             checked_in_at,
+            ticket_number,
 
             profiles!event_registrations_user_id_fkey (
                 id,

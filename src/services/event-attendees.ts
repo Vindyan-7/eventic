@@ -18,6 +18,7 @@ export interface EventAttendee {
     checked_in: boolean;
     checked_in_at: string | null;
     payment_status: string;
+    ticket_number: string;
 }
 
 type GetEventAttendeesResult =
@@ -89,6 +90,7 @@ export async function getEventAttendees(
     created_at,
     checked_in,
     checked_in_at,
+    ticket_number,
     profiles!event_registrations_user_id_fkey (
         id,
         full_name,
@@ -146,6 +148,8 @@ return {
         Boolean(reg.checked_in),
     checked_in_at:
         reg.checked_in_at,
+    ticket_number:
+        reg.ticket_number,
     payment_status:
         payment?.status ?? "free",
 };

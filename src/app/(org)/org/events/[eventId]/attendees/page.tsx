@@ -198,6 +198,10 @@ export default async function EventAttendeesPage({
                                         </th>
 
                                         <th className="text-left p-4">
+                                            Ticket Number
+                                        </th>
+
+                                        <th className="text-left p-4">
                                             Email
                                         </th>
 
@@ -231,9 +235,13 @@ export default async function EventAttendeesPage({
                                                 className="border-t"
                                             >
                                                 <td className="p-4 font-medium">
-                                                    {attendee.full_name ??
-                                                        "Unnamed User"}
-                                                </td>
+                                                     {attendee.full_name ??
+                                                         "Unnamed User"}
+                                                 </td>
+
+                                                 <td className="p-4 font-mono text-sm">
+                                                     {attendee.ticket_number || "N/A"}
+                                                 </td>
 
                                                 <td className="p-4">
                                                     {attendee.email}

@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckInButton } from "./check-in-button";
-import { CheckCircle2, AlertTriangle, Calendar, Mail, User, Clock } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Calendar, Mail, User, Clock, Ticket } from "lucide-react";
 
 interface Props {
     attendee: any;
@@ -97,6 +97,14 @@ export function ScanResultCard({
                         <span>
                             {checkedInAt ? formatDateTime(checkedInAt) : "Pending"}
                         </span>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <Ticket className="h-4 w-4 opacity-70 shrink-0" />
+                    <div className="opacity-90">
+                        <span className="text-xs font-semibold mr-1">Ticket Number:</span>
+                        <span className="font-mono">{attendee.ticket_number || "N/A"}</span>
                     </div>
                 </div>
             </div>

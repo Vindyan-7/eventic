@@ -364,11 +364,11 @@ export default async function TicketPage({
                             <div className="rounded-2xl bg-muted/40 p-4">
 
                                 <p className="text-xs text-muted-foreground">
-                                    Registration ID
+                                    Ticket Number
                                 </p>
 
-                                <code className="block mt-2 break-all text-sm">
-                                    {registration.id}
+                                <code className="block mt-2 break-all text-sm font-mono">
+                                    {registration.ticket_number}
                                 </code>
 
                             </div>
@@ -411,6 +411,7 @@ export default async function TicketPage({
                         <div className="flex flex-wrap gap-4 justify-center border-t pt-6 mt-6">
                             <DownloadTicketButton
                                 registrationId={registration.id}
+                                ticketNumber={registration.ticket_number}
                                 eventName={event.title}
                                 orgName={event.organizations?.name || "Organizer"}
                                 venue={event.venue || "Venue TBA"}
