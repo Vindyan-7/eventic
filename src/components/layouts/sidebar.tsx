@@ -143,8 +143,8 @@ export function Sidebar({ profile, className, onNavigate }: SidebarProps) {
                 </Link>
             </div>
 
-            <ScrollArea className="flex-1 px-3">
-                <div className="space-y-1">
+            <ScrollArea className="flex-1 pr-3 pl-1">
+                <div className="space-y-1.5">
                     {items.map((item) => {
                         const Icon = item.icon;
                         const isActive = pathname === item.href;
@@ -155,12 +155,14 @@ export function Sidebar({ profile, className, onNavigate }: SidebarProps) {
                                 href={item.href}
                                 onClick={() => onNavigate?.()}
                                 className={cn(
-                                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground",
-                                    isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+                                    "flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all duration-200 border-l-2 hover:bg-neutral-100 dark:hover:bg-white/5",
+                                    isActive 
+                                        ? "bg-neutral-100 dark:bg-white/5 text-foreground font-bold border-primary rounded-r-xl" 
+                                        : "text-muted-foreground hover:text-foreground border-transparent"
                                 )}
                             >
-                                <Icon className="h-4 w-4" />
-                                {item.label}
+                                <Icon className="h-4.5 w-4.5 shrink-0" />
+                                <span>{item.label}</span>
                             </Link>
                         );
                     })}
