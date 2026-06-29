@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { validateScanSession } from "@/services/scan-code-actions";
 
@@ -52,6 +52,7 @@ export async function scanAndCheckIn(
   eventId: string
 ) {
   const supabase = await createClient();
+  const adminSupabase = await createAdminClient();
 
   // 1. Verify ownership of the event
   const ownership = await verifyEventOwnership(supabase, eventId);
@@ -60,7 +61,7 @@ export async function scanAndCheckIn(
   }
 
   // 2. Validate QR / Fetch registration details
-  const { data, error } = await supabase
+  const { data, error } = await adminSupabase
     .from("event_registrations")
     .select(`
       id,
@@ -104,7 +105,7 @@ export async function scanAndCheckIn(
 
   // 5. Otherwise, check attendee in (update the db table)
   const checkInTime = new Date().toISOString();
-  const { error: updateError } = await supabase
+  const { error: updateError } = await adminSupabase
     .from("event_registrations")
     .update({
       checked_in: true,
@@ -117,7 +118,7 @@ export async function scanAndCheckIn(
   }
 
   // Fetch updated attendee details
-  const { data: updatedData, error: fetchError } = await supabase
+  const { data: updatedData, error: fetchError } = await adminSupabase
     .from("event_registrations")
     .select(`
       id,

@@ -23,10 +23,20 @@ export async function getCurrentProfile() {
       .maybeSingle();
 
     if (record && new Date(record.expires_at).getTime() > Date.now()) {
+      const { data: event } = await supabase
+        .from("events")
+        .select("title")
+        .eq("id", eventId)
+        .maybeSingle();
+
+      const eventPrefix = event?.title 
+        ? event.title.replace(/[^a-zA-Z0-9]/g, "").substring(0, 5).toLowerCase()
+        : "staff";
+
       return {
         id: `scanner_${eventId}`,
-        full_name: "Staff Scanner",
-        email: "staff@eventic.local",
+        full_name: `${event?.title ? event.title.substring(0, 15) : "Event"} Scanner`,
+        email: `${eventPrefix}@eventic.local`,
         role: "volunteer",
         event_id: eventId,
       };

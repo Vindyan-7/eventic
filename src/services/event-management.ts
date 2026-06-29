@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 export interface OrgEventDetail {
     id: string;
@@ -144,7 +144,7 @@ export async function getOrganizationEvent(
 }
 
 export async function getEventForScanner(eventId: string) {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
 
     const { data: event, error } = await supabase
         .from("events")

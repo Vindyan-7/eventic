@@ -10,12 +10,9 @@ export default async function OrgLayout({
     children: React.ReactNode;
 }) {
     const profile = await getCurrentProfile();
-    const cookieStore = await cookies();
-    const isScanner = cookieStore
-        .getAll()
-        .some((c) => c.name.startsWith("scan_session_"));
+    const isScanner = profile?.role === "volunteer";
 
-    if (!profile && isScanner) {
+    if (isScanner) {
         return (
             <div className="min-h-screen bg-muted/20 flex flex-col">
                 <header className="border-b bg-background px-6 py-4 flex items-center justify-between shadow-sm">

@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { validateScanSession } from "@/services/scan-code-actions";
 
@@ -52,6 +52,7 @@ export async function scanTicket(
   eventId: string
 ) {
   const supabase = await createClient();
+  const adminSupabase = await createAdminClient();
 
   // Verify ownership
   const ownership = await verifyEventOwnership(supabase, eventId);
@@ -60,7 +61,7 @@ export async function scanTicket(
   }
 
   // Fetch registration details
-  const { data, error } = await supabase
+  const { data, error } = await adminSupabase
     .from("event_registrations")
     .select(`
       id,

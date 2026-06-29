@@ -1,6 +1,8 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
+import { validateScanSession } from "@/services/scan-code-actions";
 
 export interface SearchAttendeeResult {
     id: string; // registration_id
@@ -20,6 +22,18 @@ export interface SearchAttendeeResult {
 
 // Verify that the current user owns the organization hosting the event
 async function verifyEventOwnership(supabase: any, eventId: string) {
+    // 1. Check for staff scanner session cookie
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get(`scan_session_${eventId}`);
+    if (sessionCookie) {
+        const code = sessionCookie.value;
+        const isValid = await validateScanSession(eventId, code);
+        if (isValid) {
+            return { success: true };
+        }
+    }
+
+    // 2. Fall back to organization administrator checks
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
         return { error: "Unauthorized" };
@@ -53,7 +67,7 @@ export async function searchAttendees(
     eventId: string,
     searchQuery: string
 ): Promise<{ data: SearchAttendeeResult[] | null; totalMatches: number; error: string | null }> {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
 
     // 1. Verify ownership and event correlation
     const ownership = await verifyEventOwnership(supabase, eventId);
