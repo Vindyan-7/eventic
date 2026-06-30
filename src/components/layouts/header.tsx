@@ -41,7 +41,7 @@ export function Header({ role, profile, initialNotifications = [] }: HeaderProps
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="p-0">
-                    <Sidebar profile={profile} onNavigate={() => setOpen(false)} />
+                    <Sidebar profile={profile} initialNotifications={initialNotifications} onNavigate={() => setOpen(false)} />
                 </SheetContent>
             </Sheet>
 

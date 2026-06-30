@@ -17,7 +17,8 @@ import {
     Users,
     ChevronDown,
     Heart,
-    Clock
+    Clock,
+    Bell
 } from "lucide-react";
 
 import { useAppModeStore } from "@/store/app-mode";
@@ -26,9 +27,10 @@ import { useWorkspace } from "@/app/(org)/org/workspace-context";
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
     profile: any;
     onNavigate?: () => void;
+    initialNotifications?: any[];
 }
 
-export function Sidebar({ profile, className, onNavigate }: SidebarProps) {
+export function Sidebar({ profile, className, onNavigate, initialNotifications = [] }: SidebarProps) {
     const pathname = usePathname();
     const { mode } = useAppModeStore();
 
@@ -38,6 +40,7 @@ export function Sidebar({ profile, className, onNavigate }: SidebarProps) {
     // Extract event ID from pathname if present
     const eventIdMatch = pathname.match(/\/org\/events\/([^\/]+)/);
     const eventId = eventIdMatch ? eventIdMatch[1] : "";
+    const unreadCount = initialNotifications?.filter((n: any) => !n.is_read).length || 0;
 
     // Safely consume workspace context
     let workspaceCtx: any = null;
@@ -167,6 +170,11 @@ export function Sidebar({ profile, className, onNavigate }: SidebarProps) {
                     icon: Clock,
                 },
                 {
+                    label: "Notifications",
+                    href: "/dashboard/notifications",
+                    icon: Bell,
+                },
+                {
                     label: "Profile",
                     href: "/dashboard/profile",
                     icon: User,
@@ -232,14 +240,21 @@ export function Sidebar({ profile, className, onNavigate }: SidebarProps) {
                                 href={item.href}
                                 onClick={() => onNavigate?.()}
                                 className={cn(
-                                    "flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all duration-200 border-l-2 hover:bg-neutral-900/40",
+                                    "flex items-center justify-between px-4 py-2.5 text-sm font-medium transition-all duration-200 border-l-2 hover:bg-neutral-900/40 w-full",
                                     isActive 
                                         ? "bg-neutral-900 text-white font-extrabold border-white rounded-r-xl" 
                                         : "text-neutral-500 hover:text-white border-transparent"
                                 )}
                             >
-                                <Icon className="h-4.5 w-4.5 shrink-0" />
-                                <span>{item.label}</span>
+                                <div className="flex items-center gap-3">
+                                    <Icon className="h-4.5 w-4.5 shrink-0" />
+                                    <span>{item.label}</span>
+                                </div>
+                                {item.label === "Notifications" && unreadCount > 0 && (
+                                    <span className="px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-extrabold leading-none shrink-0">
+                                        {unreadCount}
+                                    </span>
+                                )}
                             </Link>
                         );
                     })}

@@ -251,3 +251,49 @@ export async function logVolunteerActivity(data: {
   return { success: true };
 }
 
+/**
+ * Sends a targeted announcement/notification to all attendees of an event.
+ */
+export async function sendEventAnnouncement(eventId: string, data: {
+  title: string;
+  message: string;
+  category: string;
+  priority: string;
+}) {
+  const { workspace } = await requireWorkspacePermission("workspace.events");
+  const adminClient = await createAdminClient();
+
+  const { data: event } = await adminClient
+    .from("events")
+    .select("id, title")
+    .eq("id", eventId)
+    .eq("organization_id", workspace.id)
+    .single();
+
+  if (!event) throw new Error("Event not found or does not belong to this workspace");
+
+  const { broadcastNotification } = await import("@/services/notification-service");
+  const userResult = await adminClient.auth.getUser();
+  const userId = userResult.data.user?.id;
+
+  if (!userId) throw new Error("Unauthorized");
+
+  const result = await broadcastNotification(
+    userId,
+    {
+      type: "ANNOUNCEMENT",
+      category: data.category as any,
+      title: data.title,
+      message: data.message,
+      priority: data.priority as any,
+      actionUrl: `/events/${eventId}`,
+      icon: "Megaphone",
+      color: "text-blue-500",
+      eventId
+    },
+    { type: "event", eventId }
+  );
+
+  return { success: true, count: result.count };
+}
+

@@ -16,6 +16,7 @@ export function AppLayout({ children, role, profile, initialNotifications = [] }
         <div className="flex min-h-screen bg-muted/20">
             <Sidebar
                 profile={profile}
+                initialNotifications={initialNotifications}
                 className="hidden md:flex w-64 border-r bg-background sticky top-0 h-screen"
             />
             <div className="flex-1 flex flex-col">

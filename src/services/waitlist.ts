@@ -2,6 +2,7 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { createNotification, NOTIFICATION_TEMPLATES } from "./notification-service";
 
 export async function joinEventWaitlist(eventId: string) {
   const supabase = await createClient();
@@ -73,15 +74,10 @@ export async function joinEventWaitlist(eventId: string) {
   if (error || !waitlistEntry) return { error: error?.message || "Failed to join waitlist" };
 
   // Create notification
-  await adminClient
-    .from("notifications")
-    .insert({
-      user_id: user.id,
-      title: "Joined Waitlist",
-      message: `You have successfully joined the waitlist for "${event.title}". Your current position is #${position}.`,
-      type: "WAITLIST_JOINED",
-      event_id: eventId
-    });
+  await createNotification({
+    recipientId: user.id,
+    ...NOTIFICATION_TEMPLATES.WAITLIST_JOINED(event.title, eventId, position)
+  });
 
   revalidatePath(`/events/${eventId}`);
   return { success: true, position };
@@ -97,7 +93,7 @@ export async function claimWaitlistTicket(eventId: string) {
   // Check waitlist entry
   const { data: waitlist } = await adminClient
     .from("event_waitlists")
-    .select("*")
+    .select("*, event:events(title)")
     .eq("event_id", eventId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -132,15 +128,19 @@ export async function claimWaitlistTicket(eventId: string) {
     .eq("id", waitlist.id);
 
   // Send notification
-  await adminClient
-    .from("notifications")
-    .insert({
-      user_id: user.id,
-      title: "Ticket Claimed!",
-      message: "You have successfully claimed your ticket reservation. See you at the event!",
-      type: "TICKET_CLAIMED",
-      event_id: eventId
-    });
+  const waitlistEventTitle = (waitlist?.event as any)?.title || "the event";
+  await createNotification({
+    recipientId: user.id,
+    type: "TICKET_CLAIMED",
+    category: "Waitlist",
+    title: "Ticket Claimed! 🎉",
+    message: `You have successfully claimed your ticket reservation for "${waitlistEventTitle}".`,
+    icon: "CalendarCheck",
+    color: "text-blue-500",
+    priority: "normal",
+    actionUrl: "/dashboard/tickets",
+    eventId: eventId,
+  });
 
   revalidatePath(`/dashboard/events`);
   return { success: true };
@@ -204,15 +204,10 @@ export async function processSeatRelease(eventId: string) {
       .eq("id", item.id);
 
     // Create website notification
-    await adminClient
-      .from("notifications")
-      .insert({
-        user_id: item.user_id,
-        title: "Seat Reserved!",
-        message: `A seat is available for "${event.title}"! You have 60 minutes to claim your ticket before it expires.`,
-        type: "SEAT_RESERVED",
-        event_id: eventId
-      });
+    await createNotification({
+      recipientId: item.user_id,
+      ...NOTIFICATION_TEMPLATES.SEAT_AVAILABLE(event.title, eventId)
+    });
 
     // Simulated email log output
     console.log(`[SIMULATED EMAIL] To: UserID ${item.user_id} - Seat Available for event "${event.title}". Expiring at ${expiresAt}`);
@@ -226,7 +221,7 @@ export async function processExpiredReservations() {
   // Find all offered waitlists that are expired
   const { data: expiredList } = await adminClient
     .from("event_waitlists")
-    .select("id, event_id, user_id")
+    .select("id, event_id, user_id, event:events(title)")
     .eq("status", "offered")
     .lt("expires_at", now);
 
@@ -244,15 +239,11 @@ export async function processExpiredReservations() {
     eventIdsToProcess.add(item.event_id);
 
     // Create notifications for expiration
-    await adminClient
-      .from("notifications")
-      .insert({
-        user_id: item.user_id,
-        title: "Reservation Expired",
-        message: "Your 60-minute ticket claim reservation has expired and the seat has been offered to the next student in queue.",
-        type: "RESERVATION_EXPIRED",
-        event_id: item.event_id
-      });
+    const eventTitle = (item.event as any)?.title || "the event";
+    await createNotification({
+      recipientId: item.user_id,
+      ...NOTIFICATION_TEMPLATES.SEAT_EXPIRED(eventTitle, item.event_id)
+    });
   }
 
   // Trigger seat release for affected events
@@ -310,7 +301,7 @@ export async function promoteWaitlistUser(waitlistId: string) {
   
   const { data: waitlist } = await adminClient
     .from("event_waitlists")
-    .select("event_id, user_id")
+    .select("event_id, user_id, event:events(title)")
     .eq("id", waitlistId)
     .single();
 
@@ -328,15 +319,11 @@ export async function promoteWaitlistUser(waitlistId: string) {
     .eq("id", waitlistId);
 
   // Send notification
-  await adminClient
-    .from("notifications")
-    .insert({
-      user_id: waitlist.user_id,
-      title: "Seat Offered!",
-      message: "You have been promoted on the waitlist! You have 60 minutes to claim your ticket.",
-      type: "SEAT_RESERVED",
-      event_id: waitlist.event_id
-    });
+  const promotedEventTitle = (waitlist.event as any)?.title || "the event";
+  await createNotification({
+    recipientId: waitlist.user_id,
+    ...NOTIFICATION_TEMPLATES.SEAT_AVAILABLE(promotedEventTitle, waitlist.event_id)
+  });
 
   return { success: true };
 }

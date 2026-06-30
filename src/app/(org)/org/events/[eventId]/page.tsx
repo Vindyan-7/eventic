@@ -301,6 +301,13 @@ export default async function OrgEventDetailPage({ params }: PageProps) {
                         Manage Waitlist
                     </Link>
 
+                    <Link
+                        href={`/org/events/${event.id}/announce`}
+                        className="inline-flex items-center gap-2 rounded-xl border border-blue-600/30 bg-blue-600/10 text-blue-500 px-5 py-2.5 text-sm font-medium hover:bg-blue-600/20 transition-colors"
+                    >
+                        Send Announcement
+                    </Link>
+
                     {/* Edit Event */}
                     <Link
                         href={`/org/events/${event.id}/edit`}

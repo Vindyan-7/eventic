@@ -689,6 +689,41 @@ export async function deleteAnnouncement(id: string) {
   return { success: true };
 }
 
+export async function broadcastNotificationAction(data: {
+  title: string;
+  message: string;
+  category: string;
+  priority: string;
+  actionUrl?: string;
+  target: any;
+}) {
+  const admin = await requireRole(["super_admin", "platform_admin", "moderator"]);
+  const { broadcastNotification: sendBroadcast } = await import("@/services/notification-service");
+
+  const result = await sendBroadcast(
+    admin.id,
+    {
+      type: "BROADCAST",
+      category: data.category as any,
+      title: data.title,
+      message: data.message,
+      priority: data.priority as any,
+      actionUrl: data.actionUrl || undefined,
+      icon: "Megaphone",
+      color: "text-primary"
+    },
+    data.target
+  );
+
+  await logAdminAction(admin.id, "BROADCAST_NOTIFICATION", "notifications", "broadcast", {
+    target: data.target,
+    recipient_count: result.count
+  });
+
+  revalidatePath("/admin/announcements");
+  return { success: true, count: result.count };
+}
+
 export async function getMaintenanceSettings() {
   const supabase = await createAdminClient();
   const { data, error } = await supabase

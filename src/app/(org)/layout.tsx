@@ -6,6 +6,7 @@ import { requireWorkspace } from "@/lib/workspace-auth";
 import { WorkspaceProvider } from "./org/workspace-context";
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
+import { getUserNotifications } from "@/services/notification-service";
 
 export default async function OrgLayout({
   children,
@@ -112,6 +113,8 @@ export default async function OrgLayout({
     (value, index, self) => self.findIndex(t => t.id === value.id) === index
   );
 
+  const notifications = await getUserNotifications();
+
   return (
     <WorkspaceProvider
       value={{
@@ -119,7 +122,7 @@ export default async function OrgLayout({
         activeWorkspaces: uniqueWorkspaces,
       }}
     >
-      <AppLayout role="org" profile={profile}>
+      <AppLayout role="org" profile={profile} initialNotifications={notifications}>
         {children}
       </AppLayout>
     </WorkspaceProvider>
