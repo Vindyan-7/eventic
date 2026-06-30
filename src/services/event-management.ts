@@ -188,3 +188,40 @@ export async function getEventForScanner(eventId: string) {
         attendance_rate,
     };
 }
+
+export async function getEventCacheData(eventId: string) {
+    const { hasWorkspaceScannerAccess } = await import("@/lib/org-auth");
+    const hasAccess = await hasWorkspaceScannerAccess(eventId);
+    if (!hasAccess) {
+        throw new Error("Unauthorized to access this event cache");
+    }
+
+    const adminSupabase = await createAdminClient();
+    const { data, error } = await adminSupabase
+        .from("event_registrations")
+        .select(`
+            id,
+            ticket_number,
+            checked_in,
+            checked_in_at,
+            profiles!event_registrations_user_id_fkey (
+                full_name
+            )
+        `)
+        .eq("event_id", eventId);
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return (data || []).map((r: any) => ({
+        id: r.id,
+        ticket_number: r.ticket_number,
+        qr_token: r.id,
+        checked_in: r.checked_in,
+        checked_in_at: r.checked_in_at,
+        display_name: r.profiles?.full_name || "Unknown Attendee",
+        event_id: eventId,
+    }));
+}
+

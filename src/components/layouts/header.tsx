@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { ModeSwitcher } from "@/components/shared/mode-switcher";
-import { Bell, Search, Menu } from "lucide-react";
+import { Search, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { signOut } from "@/services/auth";
@@ -18,12 +18,15 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Sidebar } from "./sidebar";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { ModeGuard } from "@/components/shared/mode-guard";
+import { NotificationBell } from "./notification-bell";
+
 interface HeaderProps {
     role: "user" | "org";
     profile: any;
+    initialNotifications?: any[];
 }
 
-export function Header({ role, profile }: HeaderProps) {
+export function Header({ role, profile, initialNotifications = [] }: HeaderProps) {
     const isOrganizer = profile?.role === "org_admin";
     const [open, setOpen] = useState(false);
 
@@ -56,10 +59,7 @@ export function Header({ role, profile }: HeaderProps) {
             <div className="flex items-center gap-2">
                 <ModeSwitcher isOrganizer={isOrganizer} />
                 <ThemeToggle />
-                <Button variant="ghost" size="icon" className="relative">
-                    <Bell className="h-5 w-5" />
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
-                </Button>
+                <NotificationBell initialNotifications={initialNotifications} />
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button

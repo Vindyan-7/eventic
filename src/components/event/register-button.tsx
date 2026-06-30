@@ -61,13 +61,33 @@ export function RegisterButton({
     );
   }
 
+  const [isWaitlistPending, startWaitlistTransition] = useTransition();
+
+  const handleJoinWaitlist = () => {
+    if (!isAuthenticated) {
+      router.push(`/login?redirect=${encodeURIComponent(`/events/${slug}`)}`);
+      return;
+    }
+    startWaitlistTransition(async () => {
+      const { joinEventWaitlist } = await import("@/services/waitlist");
+      const res = await joinEventWaitlist(eventId);
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(`Joined waitlist successfully! Position: #${res.position}`);
+      router.refresh();
+    });
+  };
+
   if (isFull) {
     return (
       <button
-        disabled
-        className="w-full rounded-xl bg-red-100 text-red-600 px-6 py-3 cursor-not-allowed font-medium"
+        onClick={handleJoinWaitlist}
+        disabled={isWaitlistPending}
+        className="w-full rounded-xl bg-orange-600 text-white px-6 py-3 font-semibold hover:bg-orange-500 transition-colors disabled:opacity-50 cursor-pointer"
       >
-        Event Full
+        {isWaitlistPending ? "Joining Waitlist..." : "Join Waitlist"}
       </button>
     );
   }

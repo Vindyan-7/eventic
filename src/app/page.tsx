@@ -3,6 +3,11 @@ import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/constants/routes";
 import { getCurrentProfile } from "@/services/profile";
 import { getPublishedEvents } from "@/services/public-events";
+import { 
+  getFeaturedOrganizations, 
+  getTrendingOrganizations, 
+  getRecentlyActiveOrganizations 
+} from "@/services/public-organizations";
 
 import { HeroSection } from "@/components/landing/hero-section";
 import { StatsSection } from "@/components/landing/stats-section";
@@ -24,6 +29,12 @@ export const metadata = {
 export default async function HomePage() {
   const profile = await getCurrentProfile();
   const events = await getPublishedEvents();
+  
+  const [featuredOrgs, trendingOrgs, activeOrgs] = await Promise.all([
+    getFeaturedOrganizations(),
+    getTrendingOrganizations(),
+    getRecentlyActiveOrganizations(),
+  ]);
 
   return (
     <div className="flex flex-col min-h-screen bg-background antialiased">
@@ -77,7 +88,11 @@ export default async function HomePage() {
         <HowItWorksSection />
 
         {/* 7. Organizer Hostings Proposition Section */}
-        <OrganizerSection user={profile} />
+        <OrganizerSection 
+          featuredOrgs={featuredOrgs} 
+          trendingOrgs={trendingOrgs} 
+          activeOrgs={activeOrgs} 
+        />
 
         {/* 8. Testimonials Section */}
         <TestimonialsSection />

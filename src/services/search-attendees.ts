@@ -1,8 +1,7 @@
 "use server";
 
-import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
-import { validateScanSession } from "@/services/scan-code-actions";
+import { createAdminClient } from "@/lib/supabase/server";
+import { hasWorkspaceScannerAccess } from "@/lib/org-auth";
 
 export interface SearchAttendeeResult {
     id: string; // registration_id
@@ -20,46 +19,12 @@ export interface SearchAttendeeResult {
     [key: string]: any;
 }
 
-// Verify that the current user owns the organization hosting the event
-async function verifyEventOwnership(supabase: any, eventId: string) {
-    // 1. Check for staff scanner session cookie
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get(`scan_session_${eventId}`);
-    if (sessionCookie) {
-        const code = sessionCookie.value;
-        const isValid = await validateScanSession(eventId, code);
-        if (isValid) {
-            return { success: true };
-        }
-    }
-
-    // 2. Fall back to organization administrator checks
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+// Verify that the current user owns the organization hosting the event or has scanner access
+async function verifyEventOwnership(eventId: string) {
+    const hasAccess = await hasWorkspaceScannerAccess(eventId);
+    if (!hasAccess) {
         return { error: "Unauthorized" };
     }
-
-    const { data: organization, error: orgError } = await supabase
-        .from("organizations")
-        .select("id")
-        .eq("owner_id", user.id)
-        .single();
-
-    if (orgError || !organization) {
-        return { error: "Organization not found" };
-    }
-
-    const { data: event, error: eventError } = await supabase
-        .from("events")
-        .select("id")
-        .eq("id", eventId)
-        .eq("organization_id", organization.id)
-        .single();
-
-    if (eventError || !event) {
-        return { error: "Event not found or access denied" };
-    }
-
     return { success: true };
 }
 
@@ -70,7 +35,7 @@ export async function searchAttendees(
     const supabase = await createAdminClient();
 
     // 1. Verify ownership and event correlation
-    const ownership = await verifyEventOwnership(supabase, eventId);
+    const ownership = await verifyEventOwnership(eventId);
     if (ownership.error) {
         return { data: null, totalMatches: 0, error: ownership.error };
     }

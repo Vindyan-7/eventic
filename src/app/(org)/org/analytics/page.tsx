@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireOrgAdmin } from "@/lib/org-auth";
+import { requireWorkspacePermission } from "@/lib/workspace-auth";
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { getOrganizationAnalytics } from "@/services/org-dashboard";
 
@@ -22,10 +22,11 @@ import {
 } from "@/components/analytics/analytics-charts";
 
 export default async function OrgAnalyticsPage() {
-    await requireOrgAdmin("/org/analytics");
+    const { workspace } = await requireWorkspacePermission("analytics.view");
 
     const analytics =
-        await getOrganizationAnalytics();
+        await getOrganizationAnalytics(workspace.id);
+
 
     if (!analytics) {
         return (

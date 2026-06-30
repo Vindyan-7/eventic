@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireOrgAdmin } from "@/lib/org-auth";
 import { getEventStatus } from "@/lib/event-status";
 
-export async function getOrganizationAnalytics() {
+export async function getOrganizationAnalytics(organizationId?: string) {
     const supabase = await createClient();
 
     const {
@@ -15,16 +15,22 @@ export async function getOrganizationAnalytics() {
         return null;
     }
 
-    const { data: organization } =
-        await supabase
-            .from("organizations")
-            .select("id")
-            .eq("owner_id", user.id)
-            .single();
+    let resolvedOrgId = organizationId;
 
-    if (!organization) {
+    if (!resolvedOrgId) {
+        const { data: organization } =
+            await supabase
+                .from("organizations")
+                .select("id")
+                .eq("owner_id", user.id)
+                .single();
+        resolvedOrgId = organization?.id;
+    }
+
+    if (!resolvedOrgId) {
         return null;
     }
+
 
     const { data: events } =
         await supabase
@@ -52,7 +58,7 @@ export async function getOrganizationAnalytics() {
             `)
             .eq(
                 "organization_id",
-                organization.id
+                resolvedOrgId
             );
 
     const totalEvents =
@@ -331,7 +337,7 @@ export async function getOrganizationAnalytics() {
 }
 
 
-export async function getOrganizationEvents() {
+export async function getOrganizationEvents(organizationId?: string) {
     const supabase = await createClient();
 
     const {
@@ -342,15 +348,21 @@ export async function getOrganizationEvents() {
         return [];
     }
 
-    const { data: organization } = await supabase
-        .from("organizations")
-        .select("id")
-        .eq("owner_id", user.id)
-        .single();
+    let resolvedOrgId = organizationId;
 
-    if (!organization) {
+    if (!resolvedOrgId) {
+        const { data: organization } = await supabase
+            .from("organizations")
+            .select("id")
+            .eq("owner_id", user.id)
+            .single();
+        resolvedOrgId = organization?.id;
+    }
+
+    if (!resolvedOrgId) {
         return [];
     }
+
 
     const { data: events } = await supabase
         .from("events")
@@ -360,7 +372,7 @@ export async function getOrganizationEvents() {
         id
       )
     `)
-        .eq("organization_id", organization.id)
+        .eq("organization_id", resolvedOrgId)
         .order("created_at", { ascending: false });
 
     return events || [];

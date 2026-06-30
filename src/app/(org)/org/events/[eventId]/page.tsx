@@ -294,6 +294,13 @@ export default async function OrgEventDetailPage({ params }: PageProps) {
                         Scan Tickets
                     </Link>
 
+                    <Link
+                        href={`/org/events/${event.id}/waitlist`}
+                        className="inline-flex items-center gap-2 rounded-xl border border-orange-600/30 bg-orange-600/10 text-orange-500 px-5 py-2.5 text-sm font-medium hover:bg-orange-600/20 transition-colors"
+                    >
+                        Manage Waitlist
+                    </Link>
+
                     {/* Edit Event */}
                     <Link
                         href={`/org/events/${event.id}/edit`}

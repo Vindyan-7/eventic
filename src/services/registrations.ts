@@ -56,6 +56,7 @@ export async function registerForEvent(
         return {
             error:
                 "Event is full",
+            isFull: true,
         };
     }
 

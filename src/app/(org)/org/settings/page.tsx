@@ -1,54 +1,29 @@
-import { redirect } from "next/navigation";
-
-import { requireOrgAdmin } from "@/lib/org-auth";
-import { getCurrentOrganization } from "@/services/organizations";
-
+import { requireWorkspacePermission } from "@/lib/workspace-auth";
 import { OrganizationSettingsForm } from "@/components/forms/organization-settings-form";
 
 export default async function OrganizationSettingsPage() {
-    await requireOrgAdmin("/org/settings");
+  const { workspace } = await requireWorkspacePermission("workspace.settings");
 
-    const result =
-        await getCurrentOrganization();
+  return (
+    <div className="max-w-3xl mx-auto space-y-8 font-sans text-xs">
+      <div>
+        <h1 className="text-3xl font-extrabold tracking-tight text-white">Workspace Settings</h1>
+        <p className="text-neutral-500 font-bold mt-2">
+          Manage your workspace profile, branding and website information.
+        </p>
+      </div>
 
-    if (
-        result.error ||
-        !result.data
-    ) {
-        redirect("/org");
-    }
-
-    const organization =
-        result.data;
-
-    return (
-        <div className="max-w-3xl mx-auto space-y-8">
-            <div>
-                <h1 className="text-4xl font-bold">
-                    Organization Settings
-                </h1>
-
-                <p className="text-muted-foreground mt-2">
-                    Manage your organization
-                    profile, branding and
-                    website information.
-                </p>
-            </div>
-
-            <div className="rounded-2xl border p-6">
-                <OrganizationSettingsForm
-                    organization={{
-                        id: organization.id,
-                        name: organization.name,
-                        description:
-                            organization.description,
-                        website:
-                            organization.website,
-                        logo_url:
-                            organization.logo_url,
-                    }}
-                />
-            </div>
-        </div>
-    );
+      <div className="rounded-3xl border border-neutral-900 bg-neutral-900/10 p-6">
+        <OrganizationSettingsForm
+          organization={{
+            id: workspace.id,
+            name: workspace.name,
+            description: workspace.description || "",
+            website: workspace.website || "",
+            logo_url: workspace.logo_url || "",
+          }}
+        />
+      </div>
+    </div>
+  );
 }

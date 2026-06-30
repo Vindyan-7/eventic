@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { generateScanCode, getActiveScanCode } from "@/services/scan-code-actions";
-import { Key, Copy, Check, Clock, Loader2, Share2 } from "lucide-react";
+import { Key, Copy, Check, Clock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -25,7 +25,7 @@ export function ScanCodeGenerator({ eventId }: Props) {
                     setExpiresAt(res.expires_at);
                 }
             } catch (e) {
-                console.error("Failed to load active scan code", e);
+                console.error("Failed to load active volunteer code", e);
             } finally {
                 setLoading(false);
             }
@@ -44,10 +44,10 @@ export function ScanCodeGenerator({ eventId }: Props) {
             if (res.code && res.expiresAt) {
                 setCode(res.code);
                 setExpiresAt(res.expiresAt);
-                toast.success("Scanner access code generated!");
+                toast.success("Volunteer access code generated!");
             }
         } catch (err) {
-            toast.error("Failed to generate code");
+            toast.error("Failed to generate volunteer code");
         } finally {
             setGenerating(false);
         }
@@ -56,11 +56,10 @@ export function ScanCodeGenerator({ eventId }: Props) {
     const handleCopy = () => {
         if (!code) return;
         
-        // Construct copy text: e.g. "Staff Access Code: SCAN-483921 | Enter on /login/scan"
-        const shareText = `Event Scanner Access Code: ${code}\nLog in here: ${window.location.origin}/login/scan`;
+        const shareText = `Event Volunteer Access Code: ${code}\nLog in here: ${window.location.origin}/login/scan`;
         navigator.clipboard.writeText(shareText);
         setCopied(true);
-        toast.success("Access code copied to clipboard!");
+        toast.success("Volunteer access code copied to clipboard!");
         setTimeout(() => setCopied(false), 2000);
     };
 
@@ -76,11 +75,11 @@ export function ScanCodeGenerator({ eventId }: Props) {
         <div className="rounded-2xl border p-6 bg-card space-y-4">
             <div className="flex items-center gap-2">
                 <Key className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-bold text-foreground">Staff Scanner Access</h3>
+                <h3 className="text-lg font-bold text-foreground">Volunteer Access Code</h3>
             </div>
 
             <p className="text-xs text-muted-foreground leading-relaxed">
-                Generate a temporary 6-digit access code for volunteer staff. Staff can enter this code to check in attendees without needing an admin account.
+                Generate a temporary 6-digit access code for temporary volunteers. Volunteers can enter this code to check in attendees without needing a full organizer account.
             </p>
 
             {code ? (

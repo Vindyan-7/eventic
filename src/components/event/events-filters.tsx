@@ -254,12 +254,14 @@ export function EventsFilter({
                             : null;
 
                         return (
-                            <Link
+                            <div
                                 key={event.id}
-                                href={`/events/${event.slug}`}
-                                className="group overflow-hidden rounded-3xl border bg-background transition-all hover:shadow-xl"
+                                className="group relative overflow-hidden rounded-3xl border bg-background transition-all hover:shadow-xl hover:border-primary/20"
                             >
-                                <div className="relative h-56 overflow-hidden">
+                                {/* Main Card Link Overlay */}
+                                <Link href={`/events/${event.slug}`} className="absolute inset-0 z-0" aria-label={event.title} />
+
+                                <div className="relative h-56 overflow-hidden pointer-events-none">
                                     <Image
                                         src={event.banner_url || "https://images.unsplash.com/photo-1540575861501-7ad0582371f3?q=80&w=1200"}
                                         alt={event.title}
@@ -277,12 +279,15 @@ export function EventsFilter({
                                     </div>
                                 </div>
 
-                                <div className="p-5 space-y-4">
-                                    <div className="flex items-center gap-2">
+                                <div className="p-5 space-y-4 relative z-10 pointer-events-none">
+                                    <div className="flex items-center gap-2 pointer-events-auto">
                                         <Building2 className="h-3 w-3 text-muted-foreground" />
-                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                        <Link
+                                            href={`/organizations/${event.organizations?.slug}`}
+                                            className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
+                                        >
                                             {event.organizations?.name}
-                                        </span>
+                                        </Link>
                                     </div>
 
                                     <h3 className="font-bold text-lg line-clamp-2 leading-tight">
@@ -312,7 +317,7 @@ export function EventsFilter({
                                         <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                                     </div>
                                 </div>
-                            </Link>
+                            </div>
                         );
                     })}
                 </div>

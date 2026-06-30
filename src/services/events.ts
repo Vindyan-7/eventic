@@ -179,6 +179,8 @@ export async function updateEvent(eventId: string, formData: FormData) {
         slug = generateSlug(title);
     }
 
+    const isCapacityIncreased = max_attendees && (!existingEvent.max_attendees || max_attendees > existingEvent.max_attendees);
+
     const { error } = await supabase
         .from("events")
         .update({
@@ -201,6 +203,11 @@ export async function updateEvent(eventId: string, formData: FormData) {
 
     if (error) {
         return { error: error.message };
+    }
+
+    if (isCapacityIncreased) {
+        const { processSeatRelease } = await import("@/services/waitlist");
+        await processSeatRelease(eventId);
     }
 
     redirect(`/org/events/${eventId}`);

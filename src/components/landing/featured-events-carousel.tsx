@@ -134,13 +134,15 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
                                 : null;
 
                             return (
-                                <Link
+                                <div
                                     key={event.id}
-                                    href={`/events/${event.slug}`}
-                                    className="group flex flex-col justify-between overflow-hidden rounded-[2rem] border bg-card hover:bg-card/85 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 w-[310px] md:w-[360px] shrink-0 snap-start"
+                                    className="group relative flex flex-col justify-between overflow-hidden rounded-[2rem] border bg-card hover:bg-card/85 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 w-[310px] md:w-[360px] shrink-0 snap-start"
                                 >
-                                    {/* Direct Banner Rendering without heavy masks */}
-                                    <div className="relative h-48 md:h-52 w-full overflow-hidden border-b">
+                                    {/* Main Card Link Overlay */}
+                                    <Link href={`/events/${event.slug}`} className="absolute inset-0 z-0" aria-label={event.title} />
+
+                                    {/* Direct Banner Rendering */}
+                                    <div className="relative h-48 md:h-52 w-full overflow-hidden border-b pointer-events-none">
                                         <Image
                                             src={event.banner_url || "https://images.unsplash.com/photo-1540575861501-7ad0582371f3?q=80&w=1200"}
                                             alt={event.title}
@@ -159,14 +161,17 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
                                         </div>
                                     </div>
 
-                                    <div className="p-6 space-y-4 flex-grow flex flex-col justify-between">
-                                        <div className="space-y-3">
-                                            <div className="flex items-center gap-2">
+                                    <div className="p-6 space-y-4 flex-grow flex flex-col justify-between relative z-10 pointer-events-none">
+                                        <div className="space-y-3 pointer-events-auto">
+                                            <Link
+                                                href={`/organizations/${event.organizations?.slug}`}
+                                                className="inline-flex items-center gap-2 hover:text-primary transition-colors"
+                                            >
                                                 <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
                                                 <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground line-clamp-1">
                                                     {event.organizations?.name}
                                                 </span>
-                                            </div>
+                                            </Link>
 
                                             <h3 className="font-extrabold text-xl line-clamp-2 leading-snug group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
                                                 {event.title}
@@ -191,7 +196,7 @@ export function FeaturedEventsCarousel({ events }: FeaturedEventsCarouselProps) 
                                             </div>
                                         </div>
                                     </div>
-                                </Link>
+                                </div>
                             );
                         })}
                     </div>

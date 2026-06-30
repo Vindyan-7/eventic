@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireOrgAdmin } from "@/lib/org-auth";
+import { requireWorkspace } from "@/lib/workspace-auth";
 import { getOrganizationEvents } from "@/services/org-dashboard";
 import {
     getEventStatus,
@@ -7,10 +7,11 @@ import {
 } from "@/lib/event-status";
 
 export default async function OrgEventsPage() {
-    await requireOrgAdmin("/org/events");
+    const { workspace } = await requireWorkspace();
 
     const events =
-        await getOrganizationEvents();
+        await getOrganizationEvents(workspace.id);
+
 
     return (
         <div className="space-y-8">

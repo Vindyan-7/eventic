@@ -211,12 +211,23 @@ export async function cancelTicket(registrationId: string) {
   const admin = await requireRole(["super_admin", "platform_admin", "support_admin"]);
   const supabase = await createAdminClient();
 
+  const { data: reg } = await supabase
+    .from("event_registrations")
+    .select("event_id")
+    .eq("id", registrationId)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("event_registrations")
     .delete()
     .eq("id", registrationId);
 
   if (error) throw new Error(error.message);
+
+  if (reg) {
+    const { processSeatRelease } = await import("@/services/waitlist");
+    await processSeatRelease(reg.event_id);
+  }
 
   await logAdminAction(admin.id, "CANCEL_TICKET", "event_registrations", registrationId);
   revalidatePath("/admin/tickets");

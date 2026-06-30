@@ -1,7 +1,8 @@
 import Link from "next/link";
 
-import { requireOrgAdmin } from "@/lib/org-auth";
+import { requireWorkspace } from "@/lib/workspace-auth";
 import { getOrganizationAnalytics } from "@/services/org-dashboard";
+
 
 import {
     Calendar,
@@ -17,10 +18,11 @@ import {
 } from "@/lib/event-status";
 
 export default async function OrgDashboardPage() {
-    await requireOrgAdmin("/org");
+    const { workspace } = await requireWorkspace();
 
     const analytics =
-        await getOrganizationAnalytics();
+        await getOrganizationAnalytics(workspace.id);
+
 
     return (
         <div className="space-y-8">
