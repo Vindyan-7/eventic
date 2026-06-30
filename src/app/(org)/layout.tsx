@@ -49,10 +49,10 @@ export default async function OrgLayout({
   const cookiesList = cookieStore.getAll();
   const hasScanCookie = cookiesList.some((c) => c.name.startsWith("scan_session_"));
 
-  let isVolunteer = hasScanCookie;
+  let isVolunteer = hasScanCookie && !profile;
   const supabase = await createClient();
 
-  if (profile) {
+  if (profile && profile.role !== "super_admin" && profile.role !== "org_admin") {
     // Check if registered volunteer member in organization_members
     const { data: member } = await supabase
       .from("organization_members")
@@ -65,7 +65,14 @@ export default async function OrgLayout({
     if (member) {
       const perms = member.permissions as any;
       if (perms?.scanner?.access === true) {
-        isVolunteer = true;
+        const { count: ownsCount } = await supabase
+          .from("organizations")
+          .select("id", { count: "exact", head: true })
+          .eq("owner_id", profile.id);
+        
+        if ((ownsCount ?? 0) === 0) {
+          isVolunteer = true;
+        }
       }
     }
   }
