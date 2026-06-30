@@ -25,9 +25,11 @@ CREATE INDEX IF NOT EXISTS idx_org_follows_org_id ON public.organization_follows
 -- Enable RLS
 ALTER TABLE public.organization_follows ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view follows count" ON public.organization_follows;
 CREATE POLICY "Anyone can view follows count" ON public.organization_follows
   FOR SELECT TO public USING (true);
 
+DROP POLICY IF EXISTS "Users can manage own follows" ON public.organization_follows;
 CREATE POLICY "Users can manage own follows" ON public.organization_follows
   FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
@@ -50,9 +52,11 @@ CREATE INDEX IF NOT EXISTS idx_event_waitlists_user_id ON public.event_waitlists
 -- Enable RLS
 ALTER TABLE public.event_waitlists ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can select waitlist status" ON public.event_waitlists;
 CREATE POLICY "Anyone can select waitlist status" ON public.event_waitlists
   FOR SELECT TO public USING (true);
 
+DROP POLICY IF EXISTS "Users can manage own waitlist entries" ON public.event_waitlists;
 CREATE POLICY "Users can manage own waitlist entries" ON public.event_waitlists
   FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
@@ -73,8 +77,10 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(use
 -- Enable RLS
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own notifications" ON public.notifications;
 CREATE POLICY "Users can view own notifications" ON public.notifications
   FOR SELECT TO authenticated USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
 CREATE POLICY "Users can update own notifications" ON public.notifications
   FOR UPDATE TO authenticated USING (auth.uid() = user_id);
