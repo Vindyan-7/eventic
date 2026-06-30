@@ -9,7 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { markRead, archiveNotification, deleteNotification } from "@/services/notification-service";
-import type { NotificationRecord } from "@/services/notification-service";
+import type { NotificationRecord } from "@/services/notification-templates";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 

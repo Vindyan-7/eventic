@@ -14,7 +14,7 @@ import {
   markAllRead,
   clearAllRead,
 } from "@/services/notification-service";
-import type { NotificationRecord, NotificationCategory } from "@/services/notification-service";
+import type { NotificationRecord, NotificationCategory } from "@/services/notification-templates";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 

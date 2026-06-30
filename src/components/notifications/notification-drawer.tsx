@@ -11,7 +11,7 @@ import {
 } from "@/services/notification-service";
 import { NotificationItem } from "./notification-item";
 import { NotificationSkeleton } from "./notification-skeleton";
-import type { NotificationRecord } from "@/services/notification-service";
+import type { NotificationRecord } from "@/services/notification-templates";
 import Link from "next/link";
 
 // ─── Date section grouping ────────────────────────────────────────────────────

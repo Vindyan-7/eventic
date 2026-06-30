@@ -2,380 +2,14 @@
 
 import { createAdminClient } from "@/lib/supabase/server";
 import { createClient } from "@/lib/supabase/server";
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-export type NotificationCategory =
-  | "Events"
-  | "Tickets"
-  | "Workspace"
-  | "Volunteer"
-  | "Certificates"
-  | "Waitlist"
-  | "Platform"
-  | "Admin";
-
-export type NotificationPriority = "low" | "normal" | "high" | "critical";
-
-export type NotificationType =
-  // User notifications
-  | "REGISTRATION_CONFIRMED"
-  | "TICKET_GENERATED"
-  | "TICKET_CLAIMED"
-  | "REGISTRATION_CANCELLED"
-  | "EVENT_UPDATED"
-  | "EVENT_CANCELLED"
-  | "EVENT_REMINDER"
-  | "WAITLIST_JOINED"
-  | "SEAT_AVAILABLE"
-  | "SEAT_EXPIRING"
-  | "SEAT_EXPIRED"
-  | "CERTIFICATE_READY"
-  | "WORKSPACE_INVITATION"
-  | "VOLUNTEER_INVITATION"
-  // Organizer notifications
-  | "NEW_REGISTRATION"
-  | "REGISTRATION_CANCELLED_ORG"
-  | "VOLUNTEER_JOINED"
-  | "INVITATION_ACCEPTED"
-  | "CAPACITY_REACHED"
-  | "WAITLIST_STARTED"
-  | "WAITLIST_CLAIMED"
-  | "EVENT_PUBLISHED"
-  | "EVENT_COMPLETED"
-  // Admin notifications
-  | "ORGANIZATION_PENDING"
-  | "ORGANIZATION_APPROVED"
-  | "ORGANIZATION_REJECTED"
-  | "SYSTEM_ALERT"
-  | "MAINTENANCE"
-  | "BROADCAST"
-  // Organizer announcements
-  | "ANNOUNCEMENT";
-
-export interface CreateNotificationPayload {
-  recipientId: string;
-  senderId?: string;
-  organizationId?: string;
-  eventId?: string;
-  type: NotificationType;
-  category: NotificationCategory;
-  title: string;
-  message: string;
-  icon?: string;
-  color?: string;
-  priority?: NotificationPriority;
-  data?: Record<string, unknown>;
-  actionUrl?: string;
-  expiresAt?: string;
-  sendEmail?: boolean;
-  emailSubject?: string;
-  emailHtml?: string;
-}
-
-export type BroadcastTarget =
-  | { type: "everyone" }
-  | { type: "users" }
-  | { type: "organizers" }
-  | { type: "volunteers" }
-  | { type: "organization"; organizationId: string }
-  | { type: "event"; eventId: string };
-
-export interface GetNotificationsOptions {
-  page?: number;
-  limit?: number;
-  category?: NotificationCategory;
-  isRead?: boolean;
-  isArchived?: boolean;
-  priority?: NotificationPriority;
-  search?: string;
-}
-
-export interface NotificationRecord {
-  id: string;
-  recipient_id: string;
-  sender_id: string | null;
-  organization_id: string | null;
-  event_id: string | null;
-  type: NotificationType;
-  category: NotificationCategory;
-  title: string;
-  message: string;
-  icon: string | null;
-  color: string | null;
-  priority: NotificationPriority;
-  data: Record<string, unknown> | null;
-  action_url: string | null;
-  is_read: boolean;
-  is_archived: boolean;
-  created_at: string;
-  read_at: string | null;
-  expires_at: string | null;
-}
-
-// ─── Typed Notification Factory ───────────────────────────────────────────────
-
-export const NOTIFICATION_TEMPLATES = {
-  // ── USER ──
-  REGISTRATION_CONFIRMED: (
-    eventTitle: string,
-    eventId: string,
-    ticketId?: string
-  ): Omit<CreateNotificationPayload, "recipientId"> => ({
-    type: "REGISTRATION_CONFIRMED",
-    category: "Tickets",
-    title: "Registration Confirmed! 🎉",
-    message: `You're registered for ${eventTitle}. Your ticket is ready.`,
-    icon: "Ticket",
-    color: "text-green-500",
-    priority: "normal",
-    actionUrl: ticketId ? `/dashboard/tickets/${ticketId}` : "/dashboard/tickets",
-    eventId,
-    sendEmail: true,
-    emailSubject: `Your ticket for ${eventTitle}`,
-    emailHtml: `<p>You're registered for <strong>${eventTitle}</strong>. View your ticket in your dashboard.</p>`,
-    data: { eventId, ticketId },
-  }),
-
-  REGISTRATION_CANCELLED: (
-    eventTitle: string,
-    eventId: string
-  ): Omit<CreateNotificationPayload, "recipientId"> => ({
-    type: "REGISTRATION_CANCELLED",
-    category: "Tickets",
-    title: "Registration Cancelled",
-    message: `Your registration for ${eventTitle} has been cancelled.`,
-    icon: "XCircle",
-    color: "text-red-500",
-    priority: "normal",
-    actionUrl: `/events/${eventId}`,
-    eventId,
-    data: { eventId },
-  }),
-
-  EVENT_UPDATED: (
-    eventTitle: string,
-    eventId: string,
-    change: string
-  ): Omit<CreateNotificationPayload, "recipientId"> => ({
-    type: "EVENT_UPDATED",
-    category: "Events",
-    title: "Event Updated",
-    message: `${eventTitle} has been updated: ${change}`,
-    icon: "RefreshCw",
-    color: "text-blue-500",
-    priority: "normal",
-    actionUrl: `/events/${eventId}`,
-    eventId,
-    data: { eventId, change },
-  }),
-
-  EVENT_CANCELLED: (
-    eventTitle: string,
-    eventId: string
-  ): Omit<CreateNotificationPayload, "recipientId"> => ({
-    type: "EVENT_CANCELLED",
-    category: "Events",
-    title: "Event Cancelled",
-    message: `${eventTitle} has been cancelled by the organizer.`,
-    icon: "Ban",
-    color: "text-red-500",
-    priority: "high",
-    actionUrl: "/dashboard/events",
-    eventId,
-    data: { eventId },
-  }),
-
-  WAITLIST_JOINED: (
-    eventTitle: string,
-    eventId: string,
-    position: number
-  ): Omit<CreateNotificationPayload, "recipientId"> => ({
-    type: "WAITLIST_JOINED",
-    category: "Waitlist",
-    title: "Joined Waitlist",
-    message: `You're #${position} on the waitlist for ${eventTitle}. We'll notify you when a seat opens.`,
-    icon: "Clock",
-    color: "text-yellow-500",
-    priority: "normal",
-    actionUrl: "/dashboard/waitlist",
-    eventId,
-    data: { eventId, position },
-  }),
-
-  SEAT_AVAILABLE: (
-    eventTitle: string,
-    eventId: string
-  ): Omit<CreateNotificationPayload, "recipientId"> => ({
-    type: "SEAT_AVAILABLE",
-    category: "Waitlist",
-    title: "Seat Available! ⚡",
-    message: `A seat opened up for ${eventTitle}! Claim your ticket within 60 minutes.`,
-    icon: "Ticket",
-    color: "text-green-500",
-    priority: "high",
-    actionUrl: "/dashboard/waitlist",
-    eventId,
-    sendEmail: true,
-    emailSubject: `🎟 A seat is available for ${eventTitle}!`,
-    emailHtml: `<p>A seat opened up for <strong>${eventTitle}</strong>! You have 60 minutes to claim your ticket.</p>`,
-    data: { eventId },
-  }),
-
-  SEAT_EXPIRED: (
-    eventTitle: string,
-    eventId: string
-  ): Omit<CreateNotificationPayload, "recipientId"> => ({
-    type: "SEAT_EXPIRED",
-    category: "Waitlist",
-    title: "Seat Offer Expired",
-    message: `Your seat offer for ${eventTitle} has expired. You've been moved back to the waitlist.`,
-    icon: "AlertCircle",
-    color: "text-orange-500",
-    priority: "normal",
-    actionUrl: "/dashboard/waitlist",
-    eventId,
-    data: { eventId },
-  }),
-
-  CERTIFICATE_READY: (
-    eventTitle: string,
-    eventId: string,
-    certificateId: string
-  ): Omit<CreateNotificationPayload, "recipientId"> => ({
-    type: "CERTIFICATE_READY",
-    category: "Certificates",
-    title: "Certificate Ready 🎓",
-    message: `Your certificate for ${eventTitle} is ready to download!`,
-    icon: "Award",
-    color: "text-purple-500",
-    priority: "normal",
-    actionUrl: `/dashboard/tickets`,
-    eventId,
-    data: { eventId, certificateId },
-  }),
-
-  WORKSPACE_INVITATION: (
-    orgName: string,
-    organizationId: string,
-    inviteId: string
-  ): Omit<CreateNotificationPayload, "recipientId"> => ({
-    type: "WORKSPACE_INVITATION",
-    category: "Workspace",
-    title: "Workspace Invitation",
-    message: `You've been invited to join ${orgName} as a team member.`,
-    icon: "UserPlus",
-    color: "text-blue-500",
-    priority: "high",
-    actionUrl: `/org/settings/members`,
-    organizationId,
-    data: { organizationId, inviteId },
-  }),
-
-  VOLUNTEER_INVITATION: (
-    orgName: string,
-    eventTitle: string,
-    organizationId: string,
-    eventId: string
-  ): Omit<CreateNotificationPayload, "recipientId"> => ({
-    type: "VOLUNTEER_INVITATION",
-    category: "Volunteer",
-    title: "Volunteer Invitation",
-    message: `${orgName} has invited you to volunteer at ${eventTitle}.`,
-    icon: "HandHeart",
-    color: "text-pink-500",
-    priority: "high",
-    actionUrl: `/org`,
-    organizationId,
-    eventId,
-    data: { organizationId, eventId },
-  }),
-
-  // ── ORGANIZER ──
-  NEW_REGISTRATION: (
-    attendeeName: string,
-    eventTitle: string,
-    eventId: string
-  ): Omit<CreateNotificationPayload, "recipientId"> => ({
-    type: "NEW_REGISTRATION",
-    category: "Events",
-    title: "New Registration",
-    message: `${attendeeName} just registered for ${eventTitle}.`,
-    icon: "UserCheck",
-    color: "text-green-500",
-    priority: "low",
-    actionUrl: `/org/events/${eventId}/attendees`,
-    eventId,
-    data: { eventId, attendeeName },
-  }),
-
-  CAPACITY_REACHED: (
-    eventTitle: string,
-    eventId: string
-  ): Omit<CreateNotificationPayload, "recipientId"> => ({
-    type: "CAPACITY_REACHED",
-    category: "Events",
-    title: "Event at Full Capacity",
-    message: `${eventTitle} has reached its maximum capacity. Waitlist is now active.`,
-    icon: "Users",
-    color: "text-orange-500",
-    priority: "high",
-    actionUrl: `/org/events/${eventId}`,
-    eventId,
-    data: { eventId },
-  }),
-
-  EVENT_ANNOUNCEMENT: (
-    orgName: string,
-    eventTitle: string,
-    announcementTitle: string,
-    message: string,
-    eventId: string
-  ): Omit<CreateNotificationPayload, "recipientId"> => ({
-    type: "ANNOUNCEMENT",
-    category: "Events",
-    title: announcementTitle,
-    message,
-    icon: "Megaphone",
-    color: "text-blue-500",
-    priority: "normal",
-    actionUrl: `/events/${eventId}`,
-    eventId,
-    data: { eventId, orgName, eventTitle },
-  }),
-
-  // ── ADMIN ──
-  ORGANIZATION_PENDING: (
-    orgName: string,
-    orgId: string
-  ): Omit<CreateNotificationPayload, "recipientId"> => ({
-    type: "ORGANIZATION_PENDING",
-    category: "Admin",
-    title: "New Organization Pending Approval",
-    message: `${orgName} is pending verification review.`,
-    icon: "Building2",
-    color: "text-yellow-500",
-    priority: "normal",
-    actionUrl: `/admin/organizations/verification`,
-    data: { orgId, orgName },
-  }),
-
-  BROADCAST: (
-    title: string,
-    message: string,
-    actionUrl?: string
-  ): Omit<CreateNotificationPayload, "recipientId"> => ({
-    type: "BROADCAST",
-    category: "Platform",
-    title,
-    message,
-    icon: "Megaphone",
-    color: "text-primary",
-    priority: "normal",
-    actionUrl: actionUrl || "/dashboard",
-    data: {},
-  }),
-};
+import type {
+  NotificationRecord,
+  NotificationCategory,
+  NotificationPriority,
+  NotificationType,
+  CreateNotificationPayload,
+  BroadcastTarget
+} from "./notification-templates";
 
 // ─── Core Service Functions ───────────────────────────────────────────────────
 
@@ -401,37 +35,25 @@ export async function createNotification(
       icon: payload.icon ?? null,
       color: payload.color ?? null,
       priority: payload.priority ?? "normal",
-      data: payload.data ?? null,
+      data: payload.data ?? {},
       action_url: payload.actionUrl ?? null,
-      is_read: false,
-      is_archived: false,
       expires_at: payload.expiresAt ?? null,
-      // Keep legacy columns populated for backward compat
-      user_id: payload.recipientId,
-      read: false,
     })
     .select("id")
     .single();
 
-  if (error) {
-    console.error("[NotificationService] Failed to create notification:", error.message);
+  if (error || !data) {
+    console.error("Failed to create notification:", error);
     return null;
   }
 
-  // Fire email hook if requested
-  if (payload.sendEmail && payload.emailSubject && payload.emailHtml) {
-    // Get recipient email
-    const { data: profile } = await adminClient
-      .from("profiles")
-      .select("email")
-      .eq("id", payload.recipientId)
-      .single();
-
-    if (profile?.email) {
-      await sendEmail(profile.email, payload.emailSubject, payload.emailHtml).catch((err) =>
-        console.warn("[NotificationService] Email send failed (non-fatal):", err.message)
-      );
-    }
+  // Trigger optional Email channel integration
+  if (payload.sendEmail) {
+    await sendNotificationEmail({
+      recipientId: payload.recipientId,
+      subject: payload.emailSubject || payload.title,
+      html: payload.emailHtml || `<p>${payload.message}</p>`,
+    });
   }
 
   return { id: data.id };
@@ -458,13 +80,9 @@ export async function createBulkNotifications(
     icon: p.icon ?? null,
     color: p.color ?? null,
     priority: p.priority ?? "normal",
-    data: p.data ?? null,
+    data: p.data ?? {},
     action_url: p.actionUrl ?? null,
-    is_read: false,
-    is_archived: false,
     expires_at: p.expiresAt ?? null,
-    user_id: p.recipientId,
-    read: false,
   }));
 
   const { error, count } = await adminClient
@@ -530,93 +148,77 @@ export async function broadcastNotification(
     const { data } = await adminClient
       .from("event_registrations")
       .select("user_id")
-      .eq("event_id", target.eventId)
-      .eq("status", "confirmed");
+      .eq("event_id", target.eventId);
     recipientIds = (data ?? []).map((r) => r.user_id);
   }
 
   if (!recipientIds.length) return { count: 0 };
 
-  const payloads: CreateNotificationPayload[] = recipientIds.map((id) => ({
+  // Create payloads
+  const notifications = recipientIds.map((recipientId) => ({
     ...payload,
-    recipientId: id,
+    recipientId,
     senderId,
   }));
 
-  const count = await createBulkNotifications(payloads);
+  // Chunk inserts to prevent payload limits
+  const chunkSize = 500;
+  let count = 0;
+  for (let i = 0; i < notifications.length; i += chunkSize) {
+    const chunk = notifications.slice(i, i + chunkSize);
+    count += await createBulkNotifications(chunk);
+  }
 
   // Log broadcast
-  await adminClient.from("notification_broadcasts").insert({
-    sender_id: senderId,
+  await logBroadcast({
+    senderId,
     title: payload.title,
     message: payload.message,
-    category: payload.category,
-    priority: payload.priority ?? "normal",
-    target_type: target.type,
-    target_id:
-      target.type === "organization"
-        ? target.organizationId
-        : target.type === "event"
-        ? target.eventId
-        : null,
-    recipient_count: count,
-    action_url: payload.actionUrl ?? null,
+    targetType: target.type,
+    targetId: target.type === "organization" ? target.organizationId : target.type === "event" ? target.eventId : undefined,
+    recipientCount: count,
+    actionUrl: payload.actionUrl,
   });
 
   return { count };
 }
 
 /**
- * Get notifications for the current authenticated user.
+ * Email Channel stub - Logs mock email delivery output to Console.
  */
-export async function getNotifications(
-  options: GetNotificationsOptions = {}
-): Promise<{ notifications: NotificationRecord[]; total: number }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { notifications: [], total: 0 };
+export async function sendNotificationEmail({
+  recipientId,
+  subject,
+  html,
+}: {
+  recipientId: string;
+  subject: string;
+  html: string;
+}) {
+  const adminClient = await createAdminClient();
+  const { data: profile } = await adminClient
+    .from("profiles")
+    .select("email, full_name")
+    .eq("id", recipientId)
+    .single();
 
-  const {
-    page = 1,
-    limit = 20,
-    category,
-    isRead,
-    isArchived = false,
-    priority,
-    search,
-  } = options;
+  const email = profile?.email || "unknown@student.edu";
+  const name = profile?.full_name || "Student";
 
-  let query = supabase
-    .from("notifications")
-    .select("*", { count: "exact" })
-    .eq("recipient_id", user.id)
-    .eq("is_archived", isArchived)
-    .order("created_at", { ascending: false })
-    .range((page - 1) * limit, page * limit - 1);
-
-  if (category) query = query.eq("category", category);
-  if (isRead !== undefined) query = query.eq("is_read", isRead);
-  if (priority) query = query.eq("priority", priority);
-  if (search) {
-    query = query.or(`title.ilike.%${search}%,message.ilike.%${search}%`);
-  }
-
-  const { data, error, count } = await query;
-
-  if (error || !data) return { notifications: [], total: 0 };
-  return { notifications: data as NotificationRecord[], total: count ?? 0 };
+  console.log("=========================================");
+  console.log(`[EMAIL DISPATCH] To: ${name} <${email}>`);
+  console.log(`[EMAIL DISPATCH] Subject: ${subject}`);
+  console.log("-----------------------------------------");
+  console.log(html.replace(/<[^>]*>/g, " ")); // Plaintext strip for clean console display
+  console.log("=========================================");
 }
 
 /**
- * Get unread notification count for the current user.
+ * Fetch unread notification count.
  */
-export async function getUnreadCount(): Promise<number> {
+export async function getUnreadNotificationCount(): Promise<number> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return 0;
 
   const { count, error } = await supabase
@@ -626,133 +228,175 @@ export async function getUnreadCount(): Promise<number> {
     .eq("is_read", false)
     .eq("is_archived", false);
 
-  if (error) return 0;
+  if (error) {
+    console.error("Error fetching unread notification count:", error);
+    return 0;
+  }
   return count ?? 0;
 }
 
 /**
- * Mark a single notification as read.
+ * Fetch paginated list of notifications for user.
  */
-export async function markRead(notificationId: string): Promise<void> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return;
+export interface GetNotificationsOptions {
+  page?: number;
+  limit?: number;
+  filter?: "all" | "unread" | "archived";
+  category?: string;
+  priority?: NotificationPriority;
+  search?: string;
+  isRead?: boolean;
+  isArchived?: boolean;
+}
 
-  await supabase
+export async function getNotifications(options: GetNotificationsOptions = {}) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { notifications: [], total: 0 };
+
+  const page = options.page ?? 1;
+  const limit = options.limit ?? 20;
+  const start = (page - 1) * limit;
+  const end = start + limit - 1;
+
+  let query = supabase
     .from("notifications")
-    .update({ is_read: true, read: true, read_at: new Date().toISOString() })
-    .eq("id", notificationId)
+    .select("*", { count: "exact" })
     .eq("recipient_id", user.id);
+
+  // Apply filters
+  if (options.filter === "unread") {
+    query = query.eq("is_read", false).eq("is_archived", false);
+  } else if (options.filter === "archived") {
+    query = query.eq("is_archived", true);
+  } else {
+    if (options.isArchived !== undefined) {
+      query = query.eq("is_archived", options.isArchived);
+    } else {
+      query = query.eq("is_archived", false);
+    }
+  }
+
+  if (options.isRead !== undefined) {
+    query = query.eq("is_read", options.isRead);
+  }
+
+  if (options.category && options.category !== "all") {
+    query = query.eq("category", options.category);
+  }
+
+  if (options.priority) {
+    query = query.eq("priority", options.priority);
+  }
+
+  if (options.search) {
+    query = query.or(`title.ilike.%${options.search}%,message.ilike.%${options.search}%`);
+  }
+
+  const { data, count, error } = await query
+    .order("created_at", { ascending: false })
+    .range(start, end);
+
+  if (error) {
+    console.error("Error fetching notifications:", error);
+    return { notifications: [], total: 0 };
+  }
+
+  return {
+    notifications: data || [],
+    total: count ?? 0,
+  };
 }
 
 /**
- * Mark all notifications as read for current user.
+ * Mark notification as read.
  */
-export async function markAllRead(): Promise<void> {
+export async function markNotificationAsRead(id: string): Promise<boolean> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
 
-  await supabase
+  const { error } = await supabase
     .from("notifications")
-    .update({ is_read: true, read: true, read_at: new Date().toISOString() })
+    .update({ is_read: true, read_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("recipient_id", user.id);
+
+  return !error;
+}
+
+/**
+ * Mark all notifications as read.
+ */
+export async function markAllNotificationsAsRead(): Promise<boolean> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { error } = await supabase
+    .from("notifications")
+    .update({ is_read: true, read_at: new Date().toISOString() })
     .eq("recipient_id", user.id)
     .eq("is_read", false);
+
+  return !error;
 }
 
 /**
- * Archive a notification (moves it out of main feed).
+ * Archive a notification.
  */
-export async function archiveNotification(notificationId: string): Promise<void> {
+export async function archiveNotification(id: string): Promise<boolean> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
 
-  await supabase
-    .from("notifications")
-    .update({ is_archived: true, is_read: true })
-    .eq("id", notificationId)
-    .eq("recipient_id", user.id);
-}
-
-/**
- * Delete a notification permanently.
- */
-export async function deleteNotification(notificationId: string): Promise<void> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return;
-
-  await supabase
-    .from("notifications")
-    .delete()
-    .eq("id", notificationId)
-    .eq("recipient_id", user.id);
-}
-
-/**
- * Clear all read notifications (bulk archive).
- */
-export async function clearAllRead(): Promise<void> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return;
-
-  await supabase
+  const { error } = await supabase
     .from("notifications")
     .update({ is_archived: true })
-    .eq("recipient_id", user.id)
-    .eq("is_read", true)
-    .eq("is_archived", false);
+    .eq("id", id)
+    .eq("recipient_id", user.id);
+
+  return !error;
 }
 
 /**
- * Get notification preferences for the current user.
- * Returns defaults if no preferences exist.
+ * Fetch user's notification preferences.
  */
 export async function getNotificationPreferences() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data } = await supabase
+  // Attempt to select
+  let { data, error } = await supabase
     .from("notification_preferences")
     .select("*")
     .eq("user_id", user.id)
     .maybeSingle();
 
-  return (
-    data ?? {
-      user_id: user.id,
-      website_enabled: true,
-      email_enabled: true,
-      pref_events: true,
-      pref_registrations: true,
-      pref_workspace_invites: true,
-      pref_volunteer_invites: true,
-      pref_certificates: true,
-      pref_waitlist: true,
-      pref_platform: true,
+  // Auto-provision if missing
+  if (!data && !error) {
+    const adminClient = await createAdminClient();
+    const { data: newPrefs, error: insertError } = await adminClient
+      .from("notification_preferences")
+      .insert({ user_id: user.id })
+      .select("*")
+      .single();
+
+    if (insertError) {
+      console.error("Failed to auto-provision notification preferences:", insertError);
+      return null;
     }
-  );
+    data = newPrefs;
+  }
+
+  return data;
 }
 
 /**
- * Save notification preferences for the current user.
+ * Update user's notification preferences.
  */
-export async function saveNotificationPreferences(prefs: {
+export async function updateNotificationPreferences(prefs: {
   website_enabled: boolean;
   email_enabled: boolean;
   pref_events: boolean;
@@ -762,59 +406,130 @@ export async function saveNotificationPreferences(prefs: {
   pref_certificates: boolean;
   pref_waitlist: boolean;
   pref_platform: boolean;
-}): Promise<void> {
+}) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized" };
 
-  await supabase.from("notification_preferences").upsert({
-    user_id: user.id,
-    ...prefs,
-    updated_at: new Date().toISOString(),
-  });
+  const { error } = await supabase
+    .from("notification_preferences")
+    .upsert({
+      user_id: user.id,
+      ...prefs,
+      updated_at: new Date().toISOString(),
+    });
+
+  if (error) {
+    console.error("Failed to update notification preferences:", error);
+    return { error: error.message };
+  }
+  return { success: true };
 }
 
-// ─── Email Hook (stub) ────────────────────────────────────────────────────────
-// When RESEND_API_KEY is present in environment, this sends real emails.
-// Otherwise it logs to console (safe in development, non-breaking in production).
+/**
+ * Log broadcast dispatch.
+ */
+export async function logBroadcast(payload: {
+  senderId: string;
+  title: string;
+  message: string;
+  targetType: string;
+  targetId?: string;
+  recipientCount: number;
+  actionUrl?: string;
+}) {
+  const adminClient = await createAdminClient();
+  const { data, error } = await adminClient
+    .from("notification_broadcasts")
+    .insert({
+      sender_id: payload.senderId,
+      title: payload.title,
+      message: payload.message,
+      target_type: payload.targetType,
+      target_id: payload.targetId ?? null,
+      recipient_count: payload.recipientCount,
+      action_url: payload.actionUrl ?? null,
+    })
+    .select("id")
+    .single();
 
-async function sendEmail(to: string, subject: string, html: string): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
-
-  if (!apiKey) {
-    console.log(`[NotificationService] Email stub — would send to: ${to}`);
-    console.log(`[NotificationService] Subject: ${subject}`);
-    return;
+  if (error) {
+    console.error("Failed to log broadcast:", error);
   }
-
-  // Dynamically import resend only when API key is present
-  try {
-    const { Resend } = await import("resend");
-    const resend = new Resend(apiKey);
-    const from = process.env.EMAIL_FROM ?? "Eventic <noreply@eventic.app>";
-
-    await resend.emails.send({ from, to, subject, html });
-  } catch (err: any) {
-    console.error("[NotificationService] Resend error:", err.message);
-  }
+  return data?.id || null;
 }
 
-// ─── Backward-compatible exports (used by existing bell component) ─────────────
+/**
+ * Retrieve broadcast logs for admins.
+ */
+export async function getBroadcastLogs() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("notification_broadcasts")
+    .select(`
+      *,
+      sender:sender_id (
+        full_name,
+        email
+      )
+    `)
+    .order("created_at", { ascending: false });
 
-/** @deprecated Use getNotifications() instead */
+  if (error) {
+    console.error("Error fetching broadcast logs:", error);
+    return [];
+  }
+  return data || [];
+}
+
+/**
+ * Compatibility wrapper functions.
+ */
 export async function getUserNotifications() {
-  const { notifications } = await getNotifications({ limit: 20 });
-  return notifications;
+  const res = await getNotifications({ page: 1, limit: 100 });
+  return res.notifications;
 }
 
-/** @deprecated Use markRead() instead */
-export async function markNotificationRead(notificationId: string) {
-  return markRead(notificationId);
+export async function markNotificationRead(id: string) {
+  return markNotificationAsRead(id);
 }
 
-/** @deprecated Use markAllRead() instead */
 export async function markAllNotificationsRead() {
-  return markAllRead();
+  return markAllNotificationsAsRead();
+}
+
+export async function markRead(id: string) {
+  return markNotificationAsRead(id);
+}
+
+export async function markAllRead() {
+  return markAllNotificationsAsRead();
+}
+
+export async function clearAllRead() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { error } = await supabase
+    .from("notifications")
+    .delete()
+    .eq("recipient_id", user.id)
+    .eq("is_read", true);
+  return !error;
+}
+
+export async function deleteNotification(id: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { error } = await supabase
+    .from("notifications")
+    .delete()
+    .eq("id", id)
+    .eq("recipient_id", user.id);
+  return !error;
+}
+
+export async function saveNotificationPreferences(prefs: any) {
+  return updateNotificationPreferences(prefs);
 }

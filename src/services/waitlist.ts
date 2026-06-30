@@ -2,7 +2,8 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { createNotification, NOTIFICATION_TEMPLATES } from "./notification-service";
+import { createNotification } from "./notification-service";
+import { NOTIFICATION_TEMPLATES } from "./notification-templates";
 
 export async function joinEventWaitlist(eventId: string) {
   const supabase = await createClient();

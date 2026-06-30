@@ -5,7 +5,7 @@ import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NotificationDrawer } from "@/components/notifications/notification-drawer";
 import { useNotificationCount } from "@/hooks/use-notification-count";
-import type { NotificationRecord } from "@/services/notification-service";
+import type { NotificationRecord } from "@/services/notification-templates";
 
 interface NotificationBellProps {
   initialNotifications: NotificationRecord[];
