@@ -36,9 +36,13 @@ ALTER TABLE public.notifications
 
 -- Add check constraints
 ALTER TABLE public.notifications
-  ADD CONSTRAINT IF NOT EXISTS notifications_priority_check
+  DROP CONSTRAINT IF EXISTS notifications_priority_check,
+  DROP CONSTRAINT IF EXISTS notifications_category_check;
+
+ALTER TABLE public.notifications
+  ADD CONSTRAINT notifications_priority_check
     CHECK (priority IN ('low', 'normal', 'high', 'critical')),
-  ADD CONSTRAINT IF NOT EXISTS notifications_category_check
+  ADD CONSTRAINT notifications_category_check
     CHECK (category IN ('Events', 'Tickets', 'Workspace', 'Volunteer', 'Certificates', 'Waitlist', 'Platform', 'Admin'));
 
 -- ─── 2. Performance indexes ────────────────────────────────────────────────────
@@ -128,7 +132,7 @@ CREATE POLICY "Admins can manage broadcasts" ON public.notification_broadcasts
     EXISTS (
       SELECT 1 FROM public.profiles
       WHERE id = auth.uid()
-      AND role IN ('super_admin', 'platform_admin', 'moderator')
+      AND role::text IN ('super_admin', 'platform_admin', 'moderator')
     )
   );
 
