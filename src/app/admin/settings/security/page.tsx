@@ -1,22 +1,10 @@
-import { AdminHeader, AdminEmptyState } from "@/components/admin/ui";
+import { getPlatformSecuritySettings } from "@/app/admin/actions";
 import { requireRole } from "@/lib/admin/auth";
-import { Settings } from "lucide-react";
+import { SecuritySettingsClient } from "./security-settings-client";
 
 export default async function SettingsSecurityPage() {
-  await requireRole(["super_admin", "platform_admin", "finance_admin"]);
+  await requireRole("super_admin");
+  const settings = await getPlatformSecuritySettings();
 
-  return (
-    <div className="space-y-6 font-sans">
-      <AdminHeader
-        title="Security Settings"
-        description="Audit CORS configs, API keys, and RLS rules"
-      />
-      
-      <AdminEmptyState
-        title="Placeholder Module"
-        description="Secret values rotation and login restrictions will be implemented in the next sprint."
-        icon={Settings}
-      />
-    </div>
-  );
+  return <SecuritySettingsClient initialSettings={settings} />;
 }

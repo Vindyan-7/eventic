@@ -45,6 +45,12 @@ export async function adminSignIn(formData: FormData) {
     return { error: "Access Denied: This account is not authorized as an administrator." };
   }
 
+  // Update last login timestamp
+  await adminClient
+    .from("admin_users")
+    .update({ last_login_at: new Date().toISOString() })
+    .eq("user_id", user.id);
+
   return { success: true, redirectTo: "/admin" };
 }
 

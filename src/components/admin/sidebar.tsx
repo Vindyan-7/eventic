@@ -17,7 +17,13 @@ import {
   FileText,
   Bell,
   History,
-  Settings
+  Settings,
+  ShieldCheck,
+  AlertTriangle,
+  Megaphone,
+  Flag,
+  Star,
+  Settings2
 } from "lucide-react";
 
 interface SidebarProps {
@@ -47,16 +53,58 @@ const sidebarItems: SidebarItem[] = [
     allowedRoles: ["super_admin", "platform_admin", "support_admin", "moderator", "viewer"]
   },
   {
+    label: "User Moderation",
+    href: "/admin/moderation/users",
+    icon: AlertTriangle,
+    allowedRoles: ["super_admin", "platform_admin", "moderator"]
+  },
+  {
     label: "Organizations",
     href: "/admin/organizations",
     icon: Building,
     allowedRoles: ["super_admin", "platform_admin", "moderator", "viewer"]
   },
   {
+    label: "Verifications",
+    href: "/admin/organizations/verification",
+    icon: ShieldCheck,
+    allowedRoles: ["super_admin", "platform_admin", "moderator"]
+  },
+  {
     label: "Events",
     href: "/admin/events",
     icon: Calendar,
     allowedRoles: ["super_admin", "platform_admin", "moderator", "viewer"]
+  },
+  {
+    label: "Event Moderation",
+    href: "/admin/moderation/events",
+    icon: ShieldAlert,
+    allowedRoles: ["super_admin", "platform_admin", "moderator"]
+  },
+  {
+    label: "Abuse Reports",
+    href: "/admin/reports",
+    icon: Flag,
+    allowedRoles: ["super_admin", "platform_admin", "moderator"]
+  },
+  {
+    label: "Featured Events",
+    href: "/admin/featured-events",
+    icon: Star,
+    allowedRoles: ["super_admin", "platform_admin", "moderator"]
+  },
+  {
+    label: "Announcements",
+    href: "/admin/announcements",
+    icon: Megaphone,
+    allowedRoles: ["super_admin", "platform_admin", "moderator"]
+  },
+  {
+    label: "Platform Banners",
+    href: "/admin/platform-banners",
+    icon: Bell,
+    allowedRoles: ["super_admin", "platform_admin", "moderator"]
   },
   {
     label: "Tickets",
@@ -77,34 +125,52 @@ const sidebarItems: SidebarItem[] = [
     allowedRoles: ["super_admin", "platform_admin", "finance_admin"]
   },
   {
-    label: "Analytics",
+    label: "Analytics Summary",
     href: "/admin/analytics",
     icon: BarChart3,
     allowedRoles: ["super_admin", "platform_admin", "finance_admin", "viewer"]
   },
   {
-    label: "Moderation",
-    href: "/admin/moderation",
-    icon: ShieldAlert,
-    allowedRoles: ["super_admin", "platform_admin", "moderator"]
+    label: "User Insights",
+    href: "/admin/analytics/users",
+    icon: Users,
+    allowedRoles: ["super_admin", "platform_admin", "finance_admin", "viewer"]
   },
   {
-    label: "CMS",
+    label: "Host Insights",
+    href: "/admin/analytics/organizations",
+    icon: Building,
+    allowedRoles: ["super_admin", "platform_admin", "finance_admin", "viewer"]
+  },
+  {
+    label: "Scanner Insights",
+    href: "/admin/analytics/scanners",
+    icon: QrCode,
+    allowedRoles: ["super_admin", "platform_admin", "finance_admin", "viewer"]
+  },
+  {
+    label: "CMS Editor",
     href: "/admin/cms",
     icon: FileText,
-    allowedRoles: ["super_admin", "platform_admin"]
-  },
-  {
-    label: "Notifications",
-    href: "/admin/notifications",
-    icon: Bell,
-    allowedRoles: ["super_admin", "platform_admin", "support_admin"]
+    allowedRoles: ["super_admin"]
   },
   {
     label: "Audit Logs",
     href: "/admin/audit-logs",
     icon: History,
     allowedRoles: ["super_admin", "platform_admin", "finance_admin", "moderator", "viewer"]
+  },
+  {
+    label: "Admins Console",
+    href: "/admin/admins",
+    icon: ShieldCheck,
+    allowedRoles: ["super_admin", "platform_admin"]
+  },
+  {
+    label: "Maintenance Mode",
+    href: "/admin/settings/maintenance",
+    icon: Settings2,
+    allowedRoles: ["super_admin"]
   },
   {
     label: "Settings",

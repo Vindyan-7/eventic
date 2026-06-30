@@ -3,9 +3,9 @@
 import { usePathname, useRouter } from "next/navigation";
 import { AdminUser } from "@/lib/admin/auth";
 import { adminSignOut } from "@/app/admin/login/actions";
+import { AdminSearchBar } from "./search-bar";
 import {
   Bell,
-  Search,
   LogOut,
   Menu,
   ChevronRight
@@ -61,15 +61,9 @@ export function AdminNavbar({ admin, onOpenMobileSidebar }: NavbarProps) {
       </div>
 
       <div className="flex items-center gap-4">
-        {/* Search Placeholder */}
-        <div className="relative hidden md:block w-64">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-500" />
-          <input
-            type="text"
-            placeholder="Search console..."
-            className="w-full h-9 pl-9 pr-4 rounded-xl border border-neutral-800 bg-neutral-900/50 text-xs text-white placeholder:text-neutral-500 outline-none focus:border-neutral-700 transition-all"
-            disabled
-          />
+        {/* Search Bar */}
+        <div className="hidden md:block">
+          <AdminSearchBar />
         </div>
 
         {/* Notification Bell */}

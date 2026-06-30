@@ -1,22 +1,10 @@
-import { AdminHeader, AdminEmptyState } from "@/components/admin/ui";
+import { getPlatformGeneralSettings } from "@/app/admin/actions";
 import { requireRole } from "@/lib/admin/auth";
-import { Settings } from "lucide-react";
+import { GeneralSettingsClient } from "./general-settings-client";
 
 export default async function SettingsGeneralPage() {
-  await requireRole(["super_admin", "platform_admin", "finance_admin"]);
+  await requireRole("super_admin");
+  const settings = await getPlatformGeneralSettings();
 
-  return (
-    <div className="space-y-6 font-sans">
-      <AdminHeader
-        title="General Settings"
-        description="Configure platform defaults, brand names, and meta settings"
-      />
-      
-      <AdminEmptyState
-        title="Placeholder Module"
-        description="System defaults and landing parameters will be implemented in the next sprint."
-        icon={Settings}
-      />
-    </div>
-  );
+  return <GeneralSettingsClient initialSettings={settings} />;
 }

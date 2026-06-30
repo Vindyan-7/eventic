@@ -1,22 +1,38 @@
-import { AdminHeader, AdminEmptyState } from "@/components/admin/ui";
 import { requireRole } from "@/lib/admin/auth";
-import { History } from "lucide-react";
+import { createAdminClient } from "@/lib/supabase/server";
+import { AuditClient } from "./audit-client";
 
 export default async function AuditlogsPage() {
+  // Ensure access clearance
   await requireRole(["super_admin", "platform_admin", "finance_admin", "moderator", "viewer"]);
 
-  return (
-    <div className="space-y-6 font-sans">
-      <AdminHeader
-        title="Audit & Security Logs"
-        description="Immutable record of all administrator console operations"
-      />
-      
-      <AdminEmptyState
-        title="Placeholder Module"
-        description="Audit logs query and export tools will be implemented in the next sprint."
-        icon={History}
-      />
-    </div>
-  );
+  const adminClient = await createAdminClient();
+  const { data: logs, error } = await adminClient
+    .from("admin_audit_logs")
+    .select(`
+      *,
+      admin:admin_id (
+        email,
+        full_name
+      )
+    `)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Failed to query audit logs:", error);
+  }
+
+  const formattedLogs = (logs || []).map((l: any) => ({
+    id: l.id,
+    action: l.action,
+    entity: l.entity,
+    entity_id: l.entity_id,
+    metadata: l.metadata || {},
+    ip_address: l.ip_address || "127.0.0.1",
+    created_at: l.created_at,
+    admin_name: l.admin?.full_name || "Platform Admin",
+    admin_email: l.admin?.email || ""
+  }));
+
+  return <AuditClient initialLogs={formattedLogs} />;
 }
