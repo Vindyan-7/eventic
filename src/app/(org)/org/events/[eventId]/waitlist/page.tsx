@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireOrgAdmin } from "@/lib/org-auth";
 import { getOrganizationEvent } from "@/services/event-management";
-import { getEventWaitlist } from "@/services/waitlist";
+import { getEventWaitlist, getWaitlistAnalytics } from "@/services/waitlist";
 import { WaitlistManageClient } from "./waitlist-manage-client";
 
 interface PageProps {
@@ -18,6 +18,7 @@ export default async function WaitlistManagePage({ params }: PageProps) {
     }
 
     const waitlist = await getEventWaitlist(eventId);
+    const analytics = await getWaitlistAnalytics(eventId);
 
     return (
         <div className="max-w-5xl mx-auto">
@@ -25,6 +26,7 @@ export default async function WaitlistManagePage({ params }: PageProps) {
                 eventId={eventId}
                 eventTitle={result.data.title}
                 waitlist={waitlist as any}
+                analytics={analytics}
             />
         </div>
     );

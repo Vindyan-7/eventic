@@ -11,13 +11,12 @@ export async function joinEventWaitlist(eventId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Please log in to join the waitlist" };
 
-  // Check event title
+  // Check event details
   const { data: event } = await adminClient
     .from("events")
     .select("title")
     .eq("id", eventId)
     .single();
-
   if (!event) return { error: "Event not found" };
 
   // Check if already registered
@@ -27,31 +26,30 @@ export async function joinEventWaitlist(eventId: string) {
     .eq("event_id", eventId)
     .eq("user_id", user.id)
     .maybeSingle();
-
   if (existingReg) return { error: "You are already registered for this event" };
 
   // Check if already on waitlist
   const { data: existingWaitlist } = await adminClient
-    .from("event_waitlists")
+    .from("event_waitlist")
     .select("id, status")
     .eq("event_id", eventId)
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (existingWaitlist) {
-    if (existingWaitlist.status === "waiting" || existingWaitlist.status === "offered") {
+    if (existingWaitlist.status === "waiting" || existingWaitlist.status === "reserved") {
       return { error: "You are already on the waitlist for this event" };
     }
-    // Delete expired/claimed waitlist entry to re-join
+    // Delete old non-active entry to allow re-joining
     await adminClient
-      .from("event_waitlists")
+      .from("event_waitlist")
       .delete()
       .eq("id", existingWaitlist.id);
   }
 
-  // Determine waitlist position
+  // Determine position
   const { data: maxPosData } = await adminClient
-    .from("event_waitlists")
+    .from("event_waitlist")
     .select("position")
     .eq("event_id", eventId)
     .order("position", { ascending: false })
@@ -61,12 +59,13 @@ export async function joinEventWaitlist(eventId: string) {
   const position = (maxPosData?.position ?? 0) + 1;
 
   const { data: waitlistEntry, error } = await adminClient
-    .from("event_waitlists")
+    .from("event_waitlist")
     .insert({
       event_id: eventId,
       user_id: user.id,
       position,
-      status: "waiting"
+      status: "waiting",
+      joined_at: new Date().toISOString()
     })
     .select("id")
     .single();
@@ -80,6 +79,7 @@ export async function joinEventWaitlist(eventId: string) {
   });
 
   revalidatePath(`/events/${eventId}`);
+  revalidatePath(`/dashboard/waitlist`);
   return { success: true, position };
 }
 
@@ -92,20 +92,21 @@ export async function claimWaitlistTicket(eventId: string) {
 
   // Check waitlist entry
   const { data: waitlist } = await adminClient
-    .from("event_waitlists")
+    .from("event_waitlist")
     .select("*, event:events(title)")
     .eq("event_id", eventId)
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (!waitlist) return { error: "No waitlist entry found" };
-  if (waitlist.status !== "offered") return { error: "Your seat offer is not active" };
-  if (new Date(waitlist.expires_at).getTime() < Date.now()) {
+  if (waitlist.status !== "reserved") return { error: "Your seat offer is not active" };
+  if (new Date(waitlist.reservation_expires_at).getTime() < Date.now()) {
     // Update to expired
     await adminClient
-      .from("event_waitlists")
+      .from("event_waitlist")
       .update({ status: "expired" })
       .eq("id", waitlist.id);
+    await processSeatRelease(eventId);
     return { error: "Your claim reservation has expired" };
   }
 
@@ -123,8 +124,11 @@ export async function claimWaitlistTicket(eventId: string) {
 
   // Update waitlist entry to claimed
   await adminClient
-    .from("event_waitlists")
-    .update({ status: "claimed" })
+    .from("event_waitlist")
+    .update({
+      status: "claimed",
+      claimed_at: new Date().toISOString()
+    })
     .eq("id", waitlist.id);
 
   // Send notification
@@ -143,6 +147,8 @@ export async function claimWaitlistTicket(eventId: string) {
   });
 
   revalidatePath(`/dashboard/events`);
+  revalidatePath(`/dashboard/waitlist`);
+  revalidatePath(`/events/${eventId}`);
   return { success: true };
 }
 
@@ -163,30 +169,26 @@ export async function processSeatRelease(eventId: string) {
     .select("id", { count: "exact", head: true })
     .eq("event_id", eventId);
 
+  const { count: activeOffers } = await adminClient
+    .from("event_waitlist")
+    .select("id", { count: "exact", head: true })
+    .eq("event_id", eventId)
+    .eq("status", "reserved")
+    .gt("reservation_expires_at", new Date().toISOString());
+
   const currentRegs = regCount ?? 0;
-  const spotsAvailable = event.max_attendees - currentRegs;
+  const spotsAvailable = event.max_attendees - (currentRegs + (activeOffers ?? 0));
 
   if (spotsAvailable <= 0) return;
 
-  // 2. Find waitlisted people who are offered but haven't expired or claimed
-  const { count: activeOffers } = await adminClient
-    .from("event_waitlists")
-    .select("id", { count: "exact", head: true })
-    .eq("event_id", eventId)
-    .eq("status", "offered")
-    .gt("expires_at", new Date().toISOString());
-
-  const remainingOffersToMake = spotsAvailable - (activeOffers ?? 0);
-  if (remainingOffersToMake <= 0) return;
-
-  // 3. Select next people in queue
+  // 2. Select next people in queue
   const { data: nextQueue } = await adminClient
-    .from("event_waitlists")
+    .from("event_waitlist")
     .select("id, user_id, position")
     .eq("event_id", eventId)
     .eq("status", "waiting")
     .order("position", { ascending: true })
-    .limit(remainingOffersToMake);
+    .limit(spotsAvailable);
 
   if (!nextQueue || nextQueue.length === 0) return;
 
@@ -195,22 +197,21 @@ export async function processSeatRelease(eventId: string) {
   for (const item of nextQueue) {
     // Offer seat
     await adminClient
-      .from("event_waitlists")
+      .from("event_waitlist")
       .update({
-        status: "offered",
-        offered_at: new Date().toISOString(),
-        expires_at: expiresAt
+        status: "reserved",
+        reservation_created_at: new Date().toISOString(),
+        reservation_expires_at: expiresAt
       })
       .eq("id", item.id);
 
-    // Create website notification
+    // Create notification
     await createNotification({
       recipientId: item.user_id,
       ...NOTIFICATION_TEMPLATES.SEAT_AVAILABLE(event.title, eventId)
     });
 
-    // Simulated email log output
-    console.log(`[SIMULATED EMAIL] To: UserID ${item.user_id} - Seat Available for event "${event.title}". Expiring at ${expiresAt}`);
+    console.log(`[WAITLIST Cron] Seat offered to User ${item.user_id} for ${event.title}`);
   }
 }
 
@@ -218,12 +219,12 @@ export async function processExpiredReservations() {
   const adminClient = await createAdminClient();
   const now = new Date().toISOString();
 
-  // Find all offered waitlists that are expired
+  // Find all reserved waitlists that are expired
   const { data: expiredList } = await adminClient
-    .from("event_waitlists")
+    .from("event_waitlist")
     .select("id, event_id, user_id, event:events(title)")
-    .eq("status", "offered")
-    .lt("expires_at", now);
+    .eq("status", "reserved")
+    .lt("reservation_expires_at", now);
 
   if (!expiredList || expiredList.length === 0) return;
 
@@ -232,13 +233,13 @@ export async function processExpiredReservations() {
   for (const item of expiredList) {
     // Set to expired
     await adminClient
-      .from("event_waitlists")
+      .from("event_waitlist")
       .update({ status: "expired" })
       .eq("id", item.id);
 
     eventIdsToProcess.add(item.event_id);
 
-    // Create notifications for expiration
+    // Create notification
     const eventTitle = (item.event as any)?.title || "the event";
     await createNotification({
       recipientId: item.user_id,
@@ -246,27 +247,29 @@ export async function processExpiredReservations() {
     });
   }
 
-  // Trigger seat release for affected events
+  // Trigger seat release
   for (const eventId of eventIdsToProcess) {
     await processSeatRelease(eventId);
   }
 }
 
-// User Dashboard waitlists list
 export async function getUserWaitlists() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
   const { data, error } = await supabase
-    .from("event_waitlists")
+    .from("event_waitlist")
     .select(`
       *,
       event:event_id (
         id,
         title,
         starts_at,
-        slug
+        slug,
+        organizations (
+          name
+        )
       )
     `)
     .eq("user_id", user.id)
@@ -276,11 +279,10 @@ export async function getUserWaitlists() {
   return data;
 }
 
-// Organizer Dashboard waitlist list
 export async function getEventWaitlist(eventId: string) {
   const adminClient = await createAdminClient();
   const { data, error } = await adminClient
-    .from("event_waitlists")
+    .from("event_waitlist")
     .select(`
       *,
       profile:user_id (
@@ -295,12 +297,11 @@ export async function getEventWaitlist(eventId: string) {
   return data;
 }
 
-// Organizer Waitlist Actions
 export async function promoteWaitlistUser(waitlistId: string) {
   const adminClient = await createAdminClient();
-  
+
   const { data: waitlist } = await adminClient
-    .from("event_waitlists")
+    .from("event_waitlist")
     .select("event_id, user_id, event:events(title)")
     .eq("id", waitlistId)
     .single();
@@ -310,11 +311,11 @@ export async function promoteWaitlistUser(waitlistId: string) {
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
   await adminClient
-    .from("event_waitlists")
+    .from("event_waitlist")
     .update({
-      status: "offered",
-      offered_at: new Date().toISOString(),
-      expires_at: expiresAt
+      status: "reserved",
+      reservation_created_at: new Date().toISOString(),
+      reservation_expires_at: expiresAt
     })
     .eq("id", waitlistId);
 
@@ -325,16 +326,135 @@ export async function promoteWaitlistUser(waitlistId: string) {
     ...NOTIFICATION_TEMPLATES.SEAT_AVAILABLE(promotedEventTitle, waitlist.event_id)
   });
 
+  revalidatePath(`/org/events/${waitlist.event_id}/waitlist`);
+  return { success: true };
+}
+
+export async function skipWaitlistUser(waitlistId: string) {
+  const adminClient = await createAdminClient();
+
+  const { data: waitlist } = await adminClient
+    .from("event_waitlist")
+    .select("event_id, status")
+    .eq("id", waitlistId)
+    .single();
+
+  if (!waitlist) return { error: "Entry not found" };
+
+  await adminClient
+    .from("event_waitlist")
+    .update({ status: "skipped" })
+    .eq("id", waitlistId);
+
+  // If skipped user held a seat reservation, trigger promotion for the next person
+  if (waitlist.status === "reserved") {
+    await processSeatRelease(waitlist.event_id);
+  }
+
+  revalidatePath(`/org/events/${waitlist.event_id}/waitlist`);
   return { success: true };
 }
 
 export async function removeWaitlistUser(waitlistId: string) {
   const adminClient = await createAdminClient();
-  const { error } = await adminClient
-    .from("event_waitlists")
+
+  const { data: waitlist } = await adminClient
+    .from("event_waitlist")
+    .select("event_id, status")
+    .eq("id", waitlistId)
+    .single();
+
+  if (!waitlist) return { error: "Entry not found" };
+
+  await adminClient
+    .from("event_waitlist")
     .delete()
     .eq("id", waitlistId);
 
-  if (error) return { error: error.message };
+  if (waitlist.status === "reserved") {
+    await processSeatRelease(waitlist.event_id);
+  }
+
+  revalidatePath(`/org/events/${waitlist.event_id}/waitlist`);
   return { success: true };
+}
+
+export async function leaveWaitlist(waitlistId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized" };
+
+  const { data: waitlist } = await supabase
+    .from("event_waitlist")
+    .select("event_id, status, user_id")
+    .eq("id", waitlistId)
+    .single();
+
+  if (!waitlist) return { error: "Waitlist entry not found" };
+  if (waitlist.user_id !== user.id) return { error: "Access denied" };
+
+  await supabase
+    .from("event_waitlist")
+    .update({ status: "cancelled" })
+    .eq("id", waitlistId);
+
+  if (waitlist.status === "reserved") {
+    const adminClient = await createAdminClient();
+    await processSeatRelease(waitlist.event_id);
+  }
+
+  revalidatePath(`/dashboard/waitlist`);
+  return { success: true };
+}
+
+export async function getWaitlistAnalytics(eventId: string) {
+  const adminClient = await createAdminClient();
+
+  const { data: list } = await adminClient
+    .from("event_waitlist")
+    .select("*")
+    .eq("event_id", eventId);
+
+  if (!list || list.length === 0) {
+    return {
+      averageWaitMinutes: 0,
+      totalWaitlisted: 0,
+      seatsReclaimed: 0,
+      conversionRate: 0,
+      missedReservations: 0,
+    };
+  }
+
+  let totalWaitTimeMs = 0;
+  let waitCount = 0;
+  let seatsReclaimed = 0;
+  let missedReservations = 0;
+
+  for (const item of list) {
+    if (item.status === "claimed") {
+      seatsReclaimed++;
+    }
+    if (item.status === "expired") {
+      missedReservations++;
+    }
+
+    const end = item.claimed_at || item.reservation_created_at || null;
+    if (end && item.joined_at) {
+      const waitTime = new Date(end).getTime() - new Date(item.joined_at).getTime();
+      totalWaitTimeMs += Math.max(0, waitTime);
+      waitCount++;
+    }
+  }
+
+  const averageWaitMinutes = waitCount > 0 ? Math.round(totalWaitTimeMs / (1000 * 60 * waitCount)) : 0;
+  const totalWaitlisted = list.length;
+  const conversionRate = totalWaitlisted > 0 ? Math.round((seatsReclaimed / totalWaitlisted) * 100) : 0;
+
+  return {
+    averageWaitMinutes,
+    totalWaitlisted,
+    seatsReclaimed,
+    conversionRate,
+    missedReservations,
+  };
 }

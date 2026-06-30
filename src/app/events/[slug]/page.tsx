@@ -288,12 +288,22 @@ export default async function EventPage({
 
                                     </div>
 
-                                    <p className="mt-2 text-sm text-muted-foreground">
-                                        Remaining:{" "}
-                                        {
-                                            capacity.spotsRemaining
-                                        }
-                                    </p>
+                                    {capacity.spotsRemaining !== null && capacity.spotsRemaining > 0 ? (
+                                        <p className="mt-2 text-sm text-muted-foreground">
+                                            Remaining: {capacity.spotsRemaining}
+                                        </p>
+                                    ) : (
+                                        <div className="mt-3 p-3.5 rounded-xl bg-orange-600/10 border border-orange-600/20 text-orange-500 space-y-1.5">
+                                            <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+                                                <span>Event Full (Waitlist Active)</span>
+                                                <span>{capacity.waitlistCount} in queue</span>
+                                            </div>
+                                            <div className="flex justify-between text-xs">
+                                                <span className="text-muted-foreground">Est. Wait Time:</span>
+                                                <span className="font-extrabold">{capacity.estimatedWait}</span>
+                                            </div>
+                                        </div>
+                                    )}
 
                                 </div>
                             )}

@@ -1,25 +1,29 @@
 "use client";
 
-import { useTransition, useState } from "react";
+import { useTransition, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Clock, Ticket, CheckCircle, AlertCircle } from "lucide-react";
-import { claimWaitlistTicket } from "@/services/waitlist";
+import { Clock, Ticket, CheckCircle, AlertCircle, XCircle } from "lucide-react";
+import { claimWaitlistTicket, leaveWaitlist } from "@/services/waitlist";
 import { Button } from "@/components/ui/button";
 
 interface WaitlistEntry {
     id: string;
     event_id: string;
     position: number;
-    status: "waiting" | "offered" | "claimed" | "expired";
-    offered_at: string | null;
-    expires_at: string | null;
+    status: "waiting" | "reserved" | "claimed" | "expired" | "cancelled" | "skipped";
+    reservation_created_at: string | null;
+    reservation_expires_at: string | null;
     created_at: string;
+    joined_at: string;
     event: {
         id: string;
         title: string;
         starts_at: string;
         slug: string;
+        organizations: {
+            name: string;
+        } | null;
     } | null;
 }
 
@@ -33,13 +37,30 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
         return Math.max(0, Math.floor(diff / 1000));
     });
 
-    // Note: using useState with a computed initial value only.
-    // For a real countdown we'd use useEffect but for SSR-safe simplicity we show static remaining time.
+    useEffect(() => {
+        if (timeLeft <= 0) return;
+        const timer = setInterval(() => {
+            setTimeLeft((prev) => {
+                const nextVal = prev - 1;
+                if (nextVal <= 0) {
+                    clearInterval(timer);
+                    return 0;
+                }
+                return nextVal;
+            });
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [timeLeft]);
+
+    if (timeLeft <= 0) {
+        return <span className="text-red-500 font-extrabold text-xs">Expired</span>;
+    }
+
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
 
     return (
-        <span className="text-orange-500 font-extrabold tabular-nums">
+        <span className="text-orange-500 font-extrabold tabular-nums text-xs">
             {minutes}:{seconds.toString().padStart(2, "0")} remaining
         </span>
     );
@@ -49,6 +70,7 @@ export function WaitlistPageClient({ waitlists }: WaitlistPageClientProps) {
     const router = useRouter();
     const [pending, startTransition] = useTransition();
     const [claimingId, setClaimingId] = useState<string | null>(null);
+    const [cancellingId, setCancellingId] = useState<string | null>(null);
 
     const handleClaim = (eventId: string, waitlistId: string) => {
         setClaimingId(waitlistId);
@@ -64,21 +86,40 @@ export function WaitlistPageClient({ waitlists }: WaitlistPageClientProps) {
         });
     };
 
+    const handleCancel = (waitlistId: string) => {
+        if (!confirm("Are you sure you want to leave the waitlist for this event?")) return;
+        setCancellingId(waitlistId);
+        startTransition(async () => {
+            const res = await leaveWaitlist(waitlistId);
+            setCancellingId(null);
+            if (res.error) {
+                toast.error(res.error);
+                return;
+            }
+            toast.success("You have left the waitlist.");
+            router.refresh();
+        });
+    };
+
     const getStatusBadge = (status: WaitlistEntry["status"]) => {
         switch (status) {
             case "waiting":
                 return <span className="rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider">In Queue</span>;
-            case "offered":
-                return <span className="rounded-full bg-green-500/10 text-green-500 border border-green-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider animate-pulse">Seat Available!</span>;
+            case "reserved":
+                return <span className="rounded-full bg-green-500/10 text-green-500 border border-green-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider animate-pulse">Seat Reserved!</span>;
             case "claimed":
                 return <span className="rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider">Claimed</span>;
             case "expired":
                 return <span className="rounded-full bg-neutral-500/10 text-neutral-500 border border-neutral-800 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider">Expired</span>;
+            case "cancelled":
+                return <span className="rounded-full bg-red-500/10 text-red-500 border border-red-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider">Cancelled</span>;
+            case "skipped":
+                return <span className="rounded-full bg-neutral-500/10 text-neutral-500 border border-neutral-800 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider">Skipped</span>;
         }
     };
 
-    const activeWaitlists = waitlists.filter(w => w.status === "waiting" || w.status === "offered");
-    const historyWaitlists = waitlists.filter(w => w.status === "claimed" || w.status === "expired");
+    const activeWaitlists = waitlists.filter(w => w.status === "waiting" || w.status === "reserved");
+    const historyWaitlists = waitlists.filter(w => w.status === "claimed" || w.status === "expired" || w.status === "cancelled" || w.status === "skipped");
 
     return (
         <div className="space-y-8">
@@ -111,13 +152,16 @@ export function WaitlistPageClient({ waitlists }: WaitlistPageClientProps) {
                                     <div
                                         key={entry.id}
                                         className={`rounded-3xl border p-6 space-y-5 transition-all ${
-                                            entry.status === "offered"
+                                            entry.status === "reserved"
                                                 ? "border-green-500/30 bg-green-500/5 shadow-green-500/10 shadow-lg"
                                                 : "bg-background"
                                         }`}
                                     >
                                         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                                             <div className="space-y-1">
+                                                <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest block">
+                                                    {entry.event?.organizations?.name || "Organizer"}
+                                                </span>
                                                 <h3 className="font-extrabold text-base">
                                                     {entry.event?.title || "Event"}
                                                 </h3>
@@ -127,7 +171,18 @@ export function WaitlistPageClient({ waitlists }: WaitlistPageClientProps) {
                                                         : ""}
                                                 </p>
                                             </div>
-                                            {getStatusBadge(entry.status)}
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                {getStatusBadge(entry.status)}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="xs"
+                                                    onClick={() => handleCancel(entry.id)}
+                                                    disabled={pending && cancellingId === entry.id}
+                                                    className="text-muted-foreground hover:text-red-500 rounded-xl text-[10px] font-bold h-7 cursor-pointer"
+                                                >
+                                                    Cancel
+                                                </Button>
+                                            </div>
                                         </div>
 
                                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs font-bold text-muted-foreground">
@@ -138,18 +193,18 @@ export function WaitlistPageClient({ waitlists }: WaitlistPageClientProps) {
                                             <div>
                                                 <span className="text-[10px] uppercase tracking-wider block">Joined Waitlist</span>
                                                 <span className="text-foreground text-xs mt-0.5 block">
-                                                    {new Date(entry.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                                                    {new Date(entry.joined_at || entry.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                                                 </span>
                                             </div>
-                                            {entry.status === "offered" && entry.expires_at && (
+                                            {entry.status === "reserved" && entry.reservation_expires_at && (
                                                 <div>
                                                     <span className="text-[10px] uppercase tracking-wider block text-orange-500">Time to Claim</span>
-                                                    <CountdownTimer expiresAt={entry.expires_at} />
+                                                    <CountdownTimer expiresAt={entry.reservation_expires_at} />
                                                 </div>
                                             )}
                                         </div>
 
-                                        {entry.status === "offered" && (
+                                        {entry.status === "reserved" && (
                                             <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                                 <div className="flex items-start gap-3">
                                                     <CheckCircle className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
@@ -174,9 +229,12 @@ export function WaitlistPageClient({ waitlists }: WaitlistPageClientProps) {
                                         {entry.status === "waiting" && (
                                             <div className="rounded-2xl border bg-muted/30 p-4 flex items-start gap-3">
                                                 <AlertCircle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
-                                                <p className="text-xs text-muted-foreground">
-                                                    You're <strong>#{entry.position}</strong> in the queue. We'll notify you instantly when a seat becomes available. Once notified, you'll have <strong>60 minutes</strong> to claim your ticket.
-                                                </p>
+                                                <div>
+                                                    <p className="text-xs font-bold text-foreground">Waiting for seat allocation</p>
+                                                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                                                        You're <strong>#{entry.position}</strong> in the queue. Seat allocation is fully automated. When a seat is released, we'll reserve it for you and notify you instantly.
+                                                    </p>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -194,7 +252,7 @@ export function WaitlistPageClient({ waitlists }: WaitlistPageClientProps) {
                                         <div>
                                             <h4 className="font-bold text-sm">{entry.event?.title || "Event"}</h4>
                                             <p className="text-[10px] text-muted-foreground mt-0.5">
-                                                Joined {new Date(entry.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                                                Joined {new Date(entry.joined_at || entry.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                                             </p>
                                         </div>
                                         {getStatusBadge(entry.status)}
